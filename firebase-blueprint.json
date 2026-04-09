@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "barber": {
+      "title": "Barber",
+      "description": "Information about a barber in the shop.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the barber (Firebase Auth UID)." },
+        "name": { "type": "string", "description": "The name of the barber." },
+        "bio": { "type": "string", "description": "A short bio about the barber." },
+        "photoURL": { "type": "string", "description": "The profile photo URL of the barber." },
+        "role": { "type": "string", "enum": ["admin", "barber"], "description": "The role of the user." },
+        "specialties": { "type": "array", "items": { "type": "string" }, "description": "List of specialties." }
+      },
+      "required": ["uid", "name", "role"]
+    },
+    "service": {
+      "title": "Service",
+      "description": "A service offered by the barbershop.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the service." },
+        "name": { "type": "string", "description": "The name of the service (e.g., Haircut, Beard Trim)." },
+        "description": { "type": "string", "description": "A description of what the service includes." },
+        "price": { "type": "number", "description": "The price of the service." },
+        "duration": { "type": "number", "description": "The duration of the service in minutes." }
+      },
+      "required": ["id", "name", "price", "duration"]
+    },
+    "appointment": {
+      "title": "Appointment",
+      "description": "A scheduled appointment for a service.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the appointment." },
+        "barberId": { "type": "string", "description": "The ID of the barber." },
+        "customerId": { "type": "string", "description": "The ID of the customer (if logged in)." },
+        "customerName": { "type": "string", "description": "The name of the customer." },
+        "customerEmail": { "type": "string", "description": "The email of the customer." },
+        "customerPhone": { "type": "string", "description": "The phone number of the customer." },
+        "serviceId": { "type": "string", "description": "The ID of the service." },
+        "date": { "type": "string", "format": "date-time", "description": "The date and time of the appointment." },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"], "description": "The status of the appointment." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the appointment was created." }
+      },
+      "required": ["id", "barberId", "customerName", "serviceId", "date", "status"]
+    },
+    "review": {
+      "title": "Review",
+      "description": "A review for a barber or the shop.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the review." },
+        "barberId": { "type": "string", "description": "The ID of the barber being reviewed." },
+        "customerId": { "type": "string", "description": "The ID of the customer who wrote the review." },
+        "customerName": { "type": "string", "description": "The name of the customer." },
+        "rating": { "type": "number", "description": "The rating from 1 to 5." },
+        "comment": { "type": "string", "description": "The review comment." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the review was created." }
+      },
+      "required": ["id", "barberId", "customerName", "rating", "createdAt"]
+    },
+    "loyalty": {
+      "title": "Loyalty",
+      "description": "Loyalty points for a customer.",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string", "description": "The unique ID of the customer." },
+        "points": { "type": "number", "description": "The number of loyalty points." },
+        "history": { "type": "array", "items": { "type": "object" }, "description": "History of points earned/spent." }
+      },
+      "required": ["customerId", "points"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "barber", "description": "User profiles (barbers and admins)." },
+    "/services/{serviceId}": { "schema": "service", "description": "Services offered." },
+    "/appointments/{appointmentId}": { "schema": "appointment", "description": "Scheduled appointments." },
+    "/reviews/{reviewId}": { "schema": "review", "description": "Customer reviews." },
+    "/loyalty/{customerId}": { "schema": "loyalty", "description": "Loyalty points for customers." }
+  }
+}

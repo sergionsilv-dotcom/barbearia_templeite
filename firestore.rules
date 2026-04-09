@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == "sergionsilv@gmail.com" && request.auth.token.email_verified == true));
+    }
+    function isBarber() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'barber' || isAdmin());
+    }
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, name, bio, photoURL, role, specialties
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+    }
+
+    // Collection: services
+    // Fields: id, name, description, price, duration
+    match /services/{serviceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Collection: appointments
+    // Fields: id, barberId, customerId, customerName, customerEmail, customerPhone, serviceId, date, status, createdAt
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated();
+      allow create: if true;
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.customerId || isBarber());
+      allow delete: if isAdmin();
+    }
+
+    // Collection: clients
+    // Fields: id, name, phone, email, birthDate, notes, createdAt
+    match /clients/{clientId} {
+      allow read: if isBarber();
+      allow create: if true; // Allow anonymous client registration (on booking)
+      allow update: if isBarber();
+      allow delete: if isAdmin();
+    }
+
+    // Collection: reviews
+    // Fields: id, barberId, customerId, customerName, rating, comment, createdAt
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.customerId;
+      allow delete: if isAdmin();
+    }
+
+    // Collection: loyalty
+    // Fields: customerId, points, history
+    match /loyalty/{customerId} {
+      allow read: if isOwner(customerId) || isAdmin();
+      allow write: if isAdmin();
+    }
+    // Collection: sales (Transactions)
+    // Fields: appointmentId, customerName, serviceId, serviceName, barberId, barberName, amount, paymentMethod, date, createdAt
+    match /sales/{saleId} {
+      allow read: if isBarber();
+      allow create: if isBarber();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

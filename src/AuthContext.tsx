@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { User, onAuthStateChanged, signInWithRedirect, getRedirectResult, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Barber } from './types';
@@ -44,19 +44,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
+    // Handle redirect result if user is coming back from login
+    getRedirectResult(auth).catch((error) => {
+      console.error('Error handling redirect result:', error);
+    });
+
     return () => unsubscribe();
   }, []);
 
   const signIn = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      // Use redirect instead of popup for better mobile compatibility
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      if (error.code === 'auth/popup-closed-by-user') {
-        console.log('Sign-in popup closed by user');
-      } else {
-        console.error('Sign-in error:', error);
-      }
+      console.error('Sign-in error:', error);
     }
   };
 
