@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Scissors, Percent, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Scissors, Percent, DollarSign, TrendingUp, Store, Building2 } from 'lucide-react';
+import { useLocationContext } from '../../LocationContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const emptyPro = (): Omit<Barber, 'uid'> => ({
   name: '',
@@ -18,10 +20,16 @@ const emptyPro = (): Omit<Barber, 'uid'> => ({
   specialties: [],
   paymentType: 'commission',
   commissionRate: 40,
+  productCommissionRate: 10,
   salaryAmount: 0,
+  isManager: false,
+  managerBonus: 0,
+  location: '',
+  locationId: '',
 });
 
-export const ProfessionalsTab: React.FC = () => {
+export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({ activeBranchId }) => {
+  const { branches, activeBranch } = useLocationContext();
   const [professionals, setProfessionals] = useState<Barber[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -32,11 +40,16 @@ export const ProfessionalsTab: React.FC = () => {
 
   useEffect(() => {
     const unsub = firebaseUtils.subscribeToCollection<Barber>('users', [], (data) => {
-      setProfessionals(data.sort((a, b) => a.name.localeCompare(b.name)));
+      const isAll = activeBranchId === 'all';
+      const filtered = data.filter(u => 
+        (u.role === 'barber' || u.role === 'admin' || u.role === 'manager') &&
+        (isAll || !activeBranchId || u.locationId === activeBranchId || (!u.locationId && activeBranch?.isMain))
+      );
+      setProfessionals(filtered.sort((a, b) => a.name.localeCompare(b.name)));
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [activeBranchId, activeBranch]);
 
   const openAdd = () => {
     setEditing(null);
@@ -54,7 +67,12 @@ export const ProfessionalsTab: React.FC = () => {
       specialties: pro.specialties || [],
       paymentType: pro.paymentType || 'commission',
       commissionRate: pro.commissionRate ?? 40,
+      productCommissionRate: pro.productCommissionRate ?? 10,
       salaryAmount: pro.salaryAmount ?? 0,
+      isManager: pro.isManager ?? false,
+      managerBonus: pro.managerBonus ?? 0,
+      location: pro.location || '',
+      locationId: pro.locationId || '',
     });
     setSpecialtyInput('');
     setModalOpen(true);
@@ -140,9 +158,21 @@ export const ProfessionalsTab: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-bold uppercase tracking-widest text-sm leading-tight">{pro.name}</h3>
-                    <Badge className="rounded-none text-[10px] uppercase tracking-widest mt-1 bg-white/5 text-gray-500 border-white/10">
-                      {pro.role}
-                    </Badge>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge className="rounded-none text-[10px] uppercase tracking-widest bg-white/5 text-gray-500 border-white/10">
+                        {pro.role}
+                      </Badge>
+                      {pro.isManager && (
+                        <Badge className="rounded-none text-[10px] boder-amber-500/20 bg-amber-500/10 text-amber-500 uppercase tracking-widest font-black italic">
+                          GERENTE
+                        </Badge>
+                      )}
+                      {pro.location && (
+                        <Badge variant="outline" className="rounded-none text-[10px] border-white/5 bg-white/5 text-gray-500 uppercase tracking-widest">
+                          {pro.location}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex space-x-1 flex-shrink-0">
@@ -185,14 +215,34 @@ export const ProfessionalsTab: React.FC = () => {
               {/* Payment type */}
               <div className="pt-3 border-t border-white/5">
                 {pro.paymentType === 'commission' ? (
-                  <div className="flex items-center text-xs text-amber-500 font-bold uppercase tracking-widest">
-                    <Percent className="h-3 w-3 mr-1.5" />
-                    {pro.commissionRate ?? 0}% Comissão por serviço
+                  <div className="flex flex-col gap-1 text-xs text-amber-500 font-bold uppercase tracking-widest">
+                    <div className="flex items-center">
+                      <Percent className="h-3 w-3 mr-1.5" />
+                      {pro.commissionRate ?? 0}% Comissão (Serviços)
+                    </div>
+                    <div className="flex items-center text-sky-500">
+                      <TrendingUp className="h-3 w-3 mr-1.5" />
+                      {pro.productCommissionRate ?? 0}% Comissão (Produtos)
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex items-center text-xs text-green-400 font-bold uppercase tracking-widest">
-                    <DollarSign className="h-3 w-3 mr-1.5" />
-                    R$ {(pro.salaryAmount ?? 0).toFixed(2)} / mês
+                  <div className="flex flex-col gap-1 text-xs text-green-400 font-bold uppercase tracking-widest">
+                    <div className="flex items-center">
+                      <DollarSign className="h-3 w-3 mr-1.5" />
+                      R$ {(pro.salaryAmount ?? 0).toFixed(2)} / mês
+                    </div>
+                    {pro.productCommissionRate && pro.productCommissionRate > 0 && (
+                      <div className="flex items-center text-sky-500">
+                        <TrendingUp className="h-3 w-3 mr-1.5" />
+                        {pro.productCommissionRate}% Comissão (Produtos)
+                      </div>
+                    )}
+                  </div>
+                )}
+                {pro.isManager && (pro.managerBonus ?? 0) > 0 && (
+                  <div className="mt-2 pt-2 border-t border-white/[0.03] flex items-center text-[10px] text-amber-500/80 font-bold uppercase tracking-widest">
+                    <TrendingUp className="h-3 w-3 mr-1.5" />
+                    + R$ {pro.managerBonus?.toFixed(2)} Gratificação Gerência
                   </div>
                 )}
               </div>
@@ -304,35 +354,123 @@ export const ProfessionalsTab: React.FC = () => {
 
             {/* Valor */}
             {form.paymentType === 'commission' ? (
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-widest text-gray-400">
-                  Taxa de Comissão (%)
-                </Label>
-                <Input
-                  type="number" min="0" max="100"
-                  value={form.commissionRate ?? ''}
-                  onChange={e => setForm(f => ({ ...f, commissionRate: Number(e.target.value) }))}
-                  className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
-                  placeholder="Ex: 40"
-                />
-                <p className="text-xs text-gray-600">
-                  Ex: 40% → a cada R$100 em serviços, recebe R$40
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    Comissão Serviços (%)
+                  </Label>
+                  <Input
+                    type="number" min="0" max="100"
+                    value={form.commissionRate ?? ''}
+                    onChange={e => setForm(f => ({ ...f, commissionRate: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 40"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    Comissão Produtos (%)
+                  </Label>
+                  <Input
+                    type="number" min="0" max="100"
+                    value={form.productCommissionRate ?? ''}
+                    onChange={e => setForm(f => ({ ...f, productCommissionRate: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 10"
+                  />
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-widest text-gray-400">
-                  Salário Mensal (R$)
-                </Label>
-                <Input
-                  type="number" min="0" step="50"
-                  value={form.salaryAmount ?? ''}
-                  onChange={e => setForm(f => ({ ...f, salaryAmount: Number(e.target.value) }))}
-                  className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
-                  placeholder="Ex: 2500"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    Salário Mensal (R$)
+                  </Label>
+                  <Input
+                    type="number" min="0" step="50"
+                    value={form.salaryAmount ?? ''}
+                    onChange={e => setForm(f => ({ ...f, salaryAmount: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 2500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    Comissão Produtos (%)
+                  </Label>
+                  <Input
+                    type="number" min="0" max="100"
+                    value={form.productCommissionRate ?? ''}
+                    onChange={e => setForm(f => ({ ...f, productCommissionRate: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 10"
+                  />
+                </div>
               </div>
             )}
+
+            {/* Gerência */}
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs uppercase tracking-widest text-amber-500 font-bold">Acúmulo de Função: Gerência</Label>
+                  <p className="text-[10px] text-gray-600 uppercase">Habilita bônus fixo mensal</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.isManager}
+                  onChange={e => setForm(f => ({ ...f, isManager: e.target.checked }))}
+                  className="h-4 w-4 rounded-none bg-white/5 border-white/10 text-amber-500 focus:ring-amber-500 accent-amber-500"
+                />
+              </div>
+
+              {form.isManager && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    Bônus de Gerência (R$ fixo)
+                  </Label>
+                  <Input
+                    type="number" min="0" step="50"
+                    value={form.managerBonus ?? ''}
+                    onChange={e => setForm(f => ({ ...f, managerBonus: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 500"
+                  />
+                  <p className="text-[10px] text-gray-600 italic">
+                    Este valor será SOMADO à comissão ou salário no financeiro.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Unidade / Loja */}
+            <div className="space-y-2 pt-4 border-t border-white/5">
+              <Label className="text-xs uppercase tracking-widest text-gray-400">Unidade / Loja de Atuação</Label>
+              <Select 
+                value={form.locationId || 'all'} 
+                onValueChange={(val) => {
+                  const b = branches.find(x => x.id === val);
+                  setForm(f => ({ 
+                    ...f, 
+                    locationId: val === 'all' ? '' : val,
+                    location: b ? b.name : '' 
+                  }));
+                }}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 rounded-none h-10 uppercase tracking-widest text-[10px]">
+                  <SelectValue placeholder="Todas as Unidades (Global)" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111] border-white/10 text-white rounded-none">
+                  <SelectItem value="all" className="uppercase tracking-widest text-[10px]">Todas as Unidades (Global)</SelectItem>
+                  {branches.map(b => (
+                    <SelectItem key={b.id} value={b.id} className="uppercase tracking-widest text-[10px]">
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-gray-600 uppercase">Selecione a unidade principal deste profissional.</p>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">

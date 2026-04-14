@@ -13,9 +13,13 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clock, CheckCircle2 } from 'lucide-react';
 import { PhoneInput } from '../components/ui/phone-input';
+import { useLocationContext } from '../LocationContext';
+import { Store, Building2, MapPin as Pin } from 'lucide-react';
 
 
 export const Booking: React.FC = () => {
+  const { branches, networkConfig } = useLocationContext();
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [selectedService, setSelectedService] = useState<string>('');
@@ -25,19 +29,40 @@ export const Booking: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // Start at Step 0: Branch Selection
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card' | 'local'>('local');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!selectedBranch && step > 0) return;
+    
     const fetchData = async () => {
-      const s = await firebaseUtils.getCollection<Service>('services');
+      const s = await firebaseUtils.getCollection<Service>('services', []);
       const b = await firebaseUtils.getCollection<Barber>('users', []);
-      setServices(s);
-      setBarbers(b.filter(u => u.role === 'barber' || u.role === 'admin'));
+      
+      const mainBranchId = branches.find(br => br.isMain)?.id;
+
+      // Filter by branch with backward compatibility (null or matching)
+      setServices(s.filter(service => 
+        !selectedBranch || 
+        service.locationId === selectedBranch || 
+        !service.locationId
+      ));
+      setBarbers(b.filter(u => 
+        (u.role === 'barber' || u.role === 'admin' || u.role === 'manager') &&
+        (!selectedBranch || u.locationId === selectedBranch || !u.locationId)
+      ));
     };
     fetchData();
-  }, []);
+  }, [selectedBranch, branches]);
+
+  // Handle single branch auto-select
+  useEffect(() => {
+    if (branches.length === 1 && !selectedBranch) {
+      setSelectedBranch(branches[0].id);
+      setStep(1);
+    }
+  }, [branches, selectedBranch]);
 
   // Auto-fill client data if phone exists
   useEffect(() => {
@@ -69,7 +94,7 @@ export const Booking: React.FC = () => {
   }, [customerPhone, customerName, customerEmail]);
 
   const timeSlots = [
-    '09:00', '09:45', '10:30', '11:15', '13:00', '13:45', '14:30', '15:15', '16:00', '16:45', '17:30', '18:15'
+    '10:00', '10:45', '11:30', '12:15', '13:00', '13:45', '14:30', '15:15', '16:00', '16:45', '17:30', '18:15'
   ];
 
   const autoRegisterClient = async () => {
@@ -111,6 +136,7 @@ export const Booking: React.FC = () => {
         customerEmail,
         customerPhone,
         serviceId: selectedService,
+        locationId: selectedBranch,
         date: appointmentDate.toISOString(),
         status: 'pending',
         createdAt: new Date().toISOString()
@@ -136,6 +162,8 @@ export const Booking: React.FC = () => {
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold uppercase tracking-tighter italic mb-4">Agendamento Online</h1>
         <div className="flex justify-center items-center space-x-4 text-[10px] uppercase tracking-widest font-bold">
+          <span className={step >= 0 ? 'text-amber-500' : 'text-gray-600'}>0. Unidade</span>
+          <span className="text-gray-800">/</span>
           <span className={step >= 1 ? 'text-amber-500' : 'text-gray-600'}>1. Serviço</span>
           <span className="text-gray-800">/</span>
           <span className={step >= 2 ? 'text-amber-500' : 'text-gray-600'}>2. Horário</span>
@@ -147,6 +175,49 @@ export const Booking: React.FC = () => {
       </div>
 
       <AnimatePresence mode="wait">
+        {step === 0 && (
+          <motion.div
+            key="step0"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-8"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+              {branches.map((branch) => (
+                <div
+                  key={branch.id}
+                  onClick={() => setSelectedBranch(branch.id)}
+                  className={`p-6 border cursor-pointer transition-all flex flex-col items-center text-center space-y-4 ${
+                    selectedBranch === branch.id
+                      ? 'border-amber-500 bg-amber-500/5'
+                      : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
+                  }`}
+                >
+                  <div className="p-4 bg-white/5 rounded-full">
+                    {branch.isMain ? <Building2 className="h-8 w-8 text-amber-500" /> : <Store className="h-8 w-8 text-gray-400" />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold uppercase tracking-widest mb-2">{branch.name}</h3>
+                    <div className="flex items-center justify-center text-[10px] text-gray-500 gap-1 uppercase tracking-tighter">
+                      <Pin className="h-3 w-3" /> {branch.address}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center pt-8">
+              <Button 
+                disabled={!selectedBranch}
+                onClick={() => setStep(1)}
+                className="bg-amber-600 hover:bg-amber-700 rounded-none px-12 py-6 uppercase tracking-widest font-bold"
+              >
+                Escolher Unidade
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
         {step === 1 && (
           <motion.div
             key="step1"
@@ -159,54 +230,74 @@ export const Booking: React.FC = () => {
               <div className="space-y-4">
                 <Label className="uppercase tracking-widest text-xs text-gray-500">Escolha o Serviço</Label>
                 <div className="grid gap-4">
-                  {services.map((service) => (
-                    <div 
-                      key={service.id}
-                      onClick={() => setSelectedService(service.id)}
-                      className={`p-6 border cursor-pointer transition-all ${
-                        selectedService === service.id 
-                        ? 'border-amber-500 bg-amber-500/5' 
-                        : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-bold uppercase tracking-widest">{service.name}</h3>
-                        <span className="text-amber-500 font-black italic">R$ {service.price}</span>
-                      </div>
-                      <div className="flex items-center text-xs text-gray-500 space-x-4">
-                        <span className="flex items-center"><Clock className="h-3 w-3 mr-1" /> {service.duration} min</span>
-                      </div>
+                  {services.length === 0 ? (
+                    <div className="p-12 border border-dashed border-white/10 text-center space-y-4">
+                      <p className="text-gray-500 text-sm uppercase tracking-widest">Nenhum serviço disponível no momento.</p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => window.open(`https://wa.me/${networkConfig.phone || ''}`, '_blank')}
+                        className="rounded-none border-amber-500/50 text-amber-500 hover:bg-amber-500/10 text-[10px] uppercase tracking-widest"
+                      >
+                        Falar no WhatsApp
+                      </Button>
                     </div>
-                  ))}
+                  ) : (
+                    services.map((service) => (
+                      <div 
+                        key={service.id}
+                        onClick={() => setSelectedService(service.id)}
+                        className={`p-6 border cursor-pointer transition-all ${
+                          selectedService === service.id 
+                          ? 'border-amber-500 bg-amber-500/5' 
+                          : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-bold uppercase tracking-widest">{service.name}</h3>
+                          <span className="text-amber-500 font-black italic">R$ {service.price}</span>
+                        </div>
+                        <div className="flex items-center text-xs text-gray-500 space-x-4">
+                          <span className="flex items-center"><Clock className="h-3 w-3 mr-1" /> {service.duration} min</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
               <div className="space-y-4">
                 <Label className="uppercase tracking-widest text-xs text-gray-500">Escolha o Barbeiro</Label>
                 <div className="grid gap-4">
-                  {barbers.map((barber) => (
-                    <div 
-                      key={barber.uid}
-                      onClick={() => setSelectedBarber(barber.uid)}
-                      className={`p-6 border cursor-pointer transition-all flex items-center space-x-4 ${
-                        selectedBarber === barber.uid 
-                        ? 'border-amber-500 bg-amber-500/5' 
-                        : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="h-12 w-12 bg-white/10 rounded-full overflow-hidden">
-                        <img src={barber.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}`} alt={barber.name} />
-                      </div>
-                      <div>
-                        <h3 className="font-bold uppercase tracking-widest">{barber.name}</h3>
-                        <p className="text-xs text-gray-500 uppercase tracking-widest">Especialista</p>
-                      </div>
+                  {barbers.length === 0 ? (
+                    <div className="p-8 bg-white/5 border border-white/10 text-center">
+                      <p className="text-gray-500 text-[10px] uppercase tracking-widest">Profissionais não disponíveis</p>
                     </div>
-                  ))}
+                  ) : (
+                    barbers.map((barber) => (
+                      <div 
+                        key={barber.uid}
+                        onClick={() => setSelectedBarber(barber.uid)}
+                        className={`p-6 border cursor-pointer transition-all flex items-center space-x-4 ${
+                          selectedBarber === barber.uid 
+                          ? 'border-amber-500 bg-amber-500/5' 
+                          : 'border-white/10 hover:border-white/30 bg-white/[0.02]'
+                        }`}
+                      >
+                        <div className="h-12 w-12 bg-white/10 rounded-full overflow-hidden">
+                          <img src={barber.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${barber.name}`} alt={barber.name} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold uppercase tracking-widest">{barber.name}</h3>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest">Especialista</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-between">
+              <Button variant="ghost" onClick={() => setStep(0)} className="uppercase tracking-widest text-xs font-bold">Voltar</Button>
               <Button 
                 disabled={!selectedService || !selectedBarber}
                 onClick={() => setStep(2)}
@@ -334,8 +425,8 @@ export const Booking: React.FC = () => {
               <div className="grid gap-4">
                 {[
                   { id: 'local', name: 'Pagar no Local', desc: 'Pague após o serviço' },
-                  { id: 'pix', name: 'PIX (Desconto 5%)', desc: 'Pagamento instantâneo' },
-                  { id: 'card', name: 'Cartão de Crédito', desc: 'Pague agora online' }
+                  { id: 'interac', name: 'Interac e-Transfer', desc: 'Transferência instantânea' },
+                  { id: 'card', name: 'Cartão (Online)', desc: 'Pague agora via Crédito/Débito' }
                 ].map((method) => (
                   <div 
                     key={method.id}
@@ -360,7 +451,7 @@ export const Booking: React.FC = () => {
                 {selectedDate && format(selectedDate, "dd 'de' MMMM", { locale: ptBR })} às {selectedTime}
               </p>
               <p className="text-lg font-black italic text-amber-500">
-                Total: R$ {paymentMethod === 'pix' ? (selectedServiceData?.price || 0) * 0.95 : selectedServiceData?.price}
+                Total: R$ {selectedServiceData?.price?.toFixed(2) || '0.00'}
               </p>
             </div>
 

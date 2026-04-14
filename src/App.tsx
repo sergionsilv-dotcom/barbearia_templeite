@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
+import { LocationProvider } from './LocationContext';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { Booking } from './pages/Booking';
@@ -9,13 +10,35 @@ import { Toaster } from './components/ui/sonner';
 import { useEffect } from 'react';
 import { firebaseUtils } from './lib/firebaseUtils';
 import { Service } from './types';
+import { LoginLock } from './components/LoginLock';
 
 function AppContent() {
-  const { profile } = useAuth();
+  const { profile, isDeveloper, isLicenseActive } = useAuth();
 
   // Apply dark theme globally (including Dialog/Popover portals)
   useEffect(() => {
     document.documentElement.classList.add('dark');
+    
+    // Check for Square Callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const squareData = urlParams.get('data');
+    if (squareData) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(squareData));
+        if (decoded.status === 'ok') {
+          toast.success('PAGAMENTO APROVADO NA SQUARE!', {
+            description: 'A transação foi concluída. Você já pode finalizar o atendimento no painel.',
+            duration: 10000,
+          });
+        } else if (decoded.status === 'error') {
+          toast.error('ERRO NO PAGAMENTO', {
+            description: 'Ocorreu um problema no app da Square. Tente novamente.',
+          });
+        }
+      } catch (e) {
+        console.error('Square callback parse error', e);
+      }
+    }
   }, []);
 
   // Seed initial services if none exist and user is admin
@@ -43,6 +66,10 @@ function AppContent() {
     seedServices();
   }, [profile]);
 
+  if (!isLicenseActive && !isDeveloper) {
+    return <LoginLock />;
+  }
+
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <Router>
@@ -63,7 +90,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <LocationProvider>
+        <AppContent />
+      </LocationProvider>
     </AuthProvider>
   );
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../AuthContext';
+import { useLocationContext } from '../LocationContext';
 import { Button } from './ui/button';
 import { Scissors, Calendar, Image as ImageIcon, User, LogOut, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -7,6 +8,7 @@ import { Link, useLocation } from 'react-router-dom';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, profile, signIn, logout } = useAuth();
+  const { networkConfig } = useLocationContext();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const location = useLocation();
 
@@ -16,7 +18,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { name: 'Galeria', path: '/galeria', icon: ImageIcon },
   ];
 
-  if (profile?.role === 'admin' || profile?.role === 'barber') {
+  if (profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'barber') {
     navItems.push({ name: 'Painel', path: '/painel', icon: User });
   }
 
@@ -26,9 +28,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
-            <Link to="/" className="flex items-center space-x-2">
-              <Scissors className="h-8 w-8 text-amber-500" />
-              <span className="text-2xl font-bold tracking-tighter uppercase italic">O Barbeiro Sergio</span>
+            <Link to="/" className="flex items-center gap-2 group">
+              <Scissors className="h-8 w-8 text-amber-500 group-hover:rotate-12 transition-transform" />
+              <span className="text-2xl font-bold tracking-tighter uppercase italic">{networkConfig.name}</span>
             </Link>
 
             {/* Desktop Nav */}
@@ -106,11 +108,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {/* Footer */}
       <footer className="bg-black border-t border-white/10 py-12 mt-20">
         <div className="max-w-7xl mx-auto px-4 text-center">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+            <div className="space-y-4">
+              <h3 className="text-xl font-bold uppercase tracking-widest mb-4">{networkConfig.name}</h3>
+              <p className="text-gray-400 text-sm leading-relaxed max-w-xs lowercase italic">
+                {networkConfig.slogan}
+              </p>
+            </div>
+          </div>
           <Scissors className="h-10 w-10 text-amber-500 mx-auto mb-6" />
-          <h3 className="text-xl font-bold uppercase tracking-widest mb-4">O Barbeiro Sergio</h3>
-          <p className="text-gray-500 text-sm max-w-md mx-auto mb-8">
-            Elevando o conceito de barbearia com precisão, estilo e tradição.
-          </p>
           <div className="flex justify-center space-x-6 mb-8">
             <a href="https://instagram.com/obarbeirosergio" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-amber-500 transition-colors">
               Instagram

@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '../components/ui/button';
-import { motion } from 'motion/react';
-import { Scissors, Star, Clock, ShieldCheck, Instagram, MapPin, Phone } from 'lucide-react';
+import { Scissors, Star, Instagram, Clock, Phone, MapPin, ChevronRight, Play, CheckCircle2, Award, Zap, Users, MessageSquare } from 'lucide-react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { useLocationContext } from '../LocationContext';
 
 export const Home: React.FC = () => {
+  const { networkConfig } = useLocationContext();
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
   return (
     <div className="overflow-hidden">
       {/* Hero Section */}
@@ -28,14 +32,16 @@ export const Home: React.FC = () => {
             <span className="text-amber-500 uppercase tracking-[0.3em] text-sm font-bold mb-4 block">
               Tradição & Estilo Moderno
             </span>
-            <h1 className="text-6xl md:text-8xl font-black uppercase tracking-tighter leading-none mb-8 italic">
-              O Barbeiro <br />
-              <span className="text-amber-500">Sergio</span>
-            </h1>
-            <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto mb-10 font-light leading-relaxed">
-              Mais do que um corte, uma experiência de cuidado e sofisticação. 
-              Agende seu horário e descubra o padrão Sergio.
-            </p>
+              <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tighter uppercase leading-[0.9]">
+                {networkConfig.name.split(' ').map((word, i) => (
+                  <span key={i} className={i === networkConfig.name.split(' ').length - 1 ? "text-amber-500 block" : "block"}>
+                    {word}
+                  </span>
+                ))}
+              </h1>
+              <p className="text-lg md:text-xl text-gray-400 mb-8 max-w-xl font-medium leading-relaxed">
+                {networkConfig.slogan}. Agende seu horário e descubra o padrão {networkConfig.name.split(' ').pop()}.
+              </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/agendar">
                 <Button className="bg-amber-600 hover:bg-amber-700 text-white px-10 py-8 rounded-none uppercase tracking-widest text-sm font-bold w-full sm:w-auto">
@@ -58,7 +64,7 @@ export const Home: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
               { icon: Scissors, title: "Cortes de Precisão", desc: "Técnicas clássicas e modernas para o visual perfeito." },
-              { icon: ShieldCheck, title: "Produtos Premium", desc: "Usamos apenas as melhores marcas para o seu cabelo e barba." },
+              { icon: CheckCircle2, title: "Produtos Premium", desc: "Usamos apenas as melhores marcas para o seu cabelo e barba." },
               { icon: Clock, title: "Agendamento Fácil", desc: "Sistema online intuitivo para você não perder tempo." }
             ].map((feature, i) => (
               <motion.div 
@@ -116,8 +122,16 @@ export const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <Instagram className="h-10 w-10 text-amber-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold uppercase tracking-widest mb-2">Siga @obarbeirosergio</h2>
-            <p className="text-gray-500">Acompanhe as transformações e novidades diárias.</p>
+            <h2 className="text-3xl font-bold uppercase tracking-widest mb-2">Siga @{networkConfig.instagram}</h2>
+            <p className="text-gray-400 mb-8 uppercase tracking-tighter font-medium italic">Acompanhe nosso trabalho diário no Instagram</p>
+            <Button 
+              size="lg" 
+              onClick={() => window.open(`https://instagram.com/${networkConfig.instagram}`, '_blank')}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-none uppercase tracking-widest font-black italic shadow-lg shadow-purple-500/20"
+            >
+              <Instagram className="h-5 w-5 mr-2" />
+              Ver Instagram
+            </Button>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -130,7 +144,14 @@ export const Home: React.FC = () => {
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-amber-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Instagram className="text-white h-8 w-8" />
+                  <a 
+                    href={`https://instagram.com/${networkConfig.instagram}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-6 py-3 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors uppercase tracking-widest text-xs font-bold"
+                  >
+                    <Instagram className="h-3 w-3 mr-2" /> @{networkConfig.instagram}
+                  </a>
                 </div>
               </div>
             ))}

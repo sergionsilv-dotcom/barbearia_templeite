@@ -6,18 +6,22 @@ import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Clock } from 'lucide-react';
+import { Plus, Edit2, Trash2, Clock, Building2, Store } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
+import { useLocationContext } from '../../LocationContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const emptyService = (): Omit<Service, 'id'> => ({
   name: '',
   description: '',
   price: 0,
   duration: 30,
+  locationId: '',
 });
 
-export const ServicesTab: React.FC = () => {
+export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ activeBranchId }) => {
   const { profile } = useAuth();
+  const { branches, activeBranch } = useLocationContext();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -27,11 +31,18 @@ export const ServicesTab: React.FC = () => {
 
   useEffect(() => {
     const unsub = firebaseUtils.subscribeToCollection<Service>('services', [], (data) => {
-      setServices(data.sort((a, b) => a.name.localeCompare(b.name)));
+      const isAll = activeBranchId === 'all';
+      const filtered = data.filter(s => 
+        isAll || 
+        !activeBranchId || 
+        s.locationId === activeBranchId || 
+        (!s.locationId && activeBranch?.isMain)
+      );
+      setServices(filtered.sort((a, b) => a.name.localeCompare(b.name)));
       setLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [activeBranchId, activeBranch]);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -48,6 +59,7 @@ export const ServicesTab: React.FC = () => {
       description: svc.description || '',
       price: svc.price,
       duration: svc.duration,
+      locationId: svc.locationId || '',
     });
     setModalOpen(true);
   };
@@ -135,8 +147,15 @@ export const ServicesTab: React.FC = () => {
               )}
 
               <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                <div className="flex items-center text-xs text-gray-400 uppercase tracking-widest">
-                  <Clock className="h-3 w-3 mr-1.5" /> {svc.duration} min
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center text-[10px] text-gray-400 uppercase tracking-widest">
+                    <Clock className="h-3 w-3 mr-1.5" /> {svc.duration} min
+                  </div>
+                  {svc.locationId && (
+                    <div className="flex items-center text-[9px] text-amber-500/50 uppercase tracking-tighter">
+                      <Store className="h-2.5 w-2.5 mr-1" /> {branches.find(b => b.id === svc.locationId)?.name || 'Unidade'}
+                    </div>
+                  )}
                 </div>
                 <div className="text-amber-500 font-black italic text-2xl">
                   R$ {svc.price.toFixed(2)}
@@ -201,6 +220,27 @@ export const ServicesTab: React.FC = () => {
                   placeholder="30"
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-widest text-gray-400">Unidade / Loja</Label>
+              <Select 
+                value={form.locationId || 'all'} 
+                onValueChange={(val) => setForm(f => ({ ...f, locationId: val === 'all' ? '' : val }))}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 rounded-none h-10 uppercase tracking-widest text-[10px]">
+                  <SelectValue placeholder="Todas as Unidades (Global)" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111] border-white/10 text-white rounded-none">
+                  <SelectItem value="all" className="uppercase tracking-widest text-[10px]">Todas as Unidades (Global)</SelectItem>
+                  {branches.map(b => (
+                    <SelectItem key={b.id} value={b.id} className="uppercase tracking-widest text-[10px]">
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-gray-600 uppercase">Se vazio, o serviço aparecerá em todas as unidades.</p>
             </div>
           </div>
           <DialogFooter className="gap-2">

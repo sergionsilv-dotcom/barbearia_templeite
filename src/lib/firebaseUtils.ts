@@ -109,6 +109,15 @@ export const firebaseUtils = {
     }
   },
 
+  async setDocument<T extends object>(path: string, id: string, data: T): Promise<void> {
+    try {
+      const docRef = doc(db, path, id);
+      await setDoc(docRef, data, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `${path}/${id}`);
+    }
+  },
+
   async deleteDocument(path: string, id: string): Promise<void> {
     try {
       const docRef = doc(db, path, id);
