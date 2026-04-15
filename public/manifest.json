@@ -1,7 +1,7 @@
 {
-  "name": "O Barbeiro Sergio",
-  "short_name": "Sergio",
-  "description": "Sistema de Agendamentos - O Barbeiro Sergio",
+  "name": "BarberPro",
+  "short_name": "BarberPro",
+  "description": "Sistema de Agendamentos para Barbearias",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",

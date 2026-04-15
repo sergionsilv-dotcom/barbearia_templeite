@@ -63,10 +63,27 @@ export const squareService = {
     locationId: string;
     note?: string;
   }) {
+    // Diagnóstico — ver no console qual ID está sendo enviado
+    console.log('[Square Mobile] applicationId:', params.applicationId);
+    console.log('[Square Mobile] locationId:', params.locationId);
+    console.log('[Square Mobile] amount:', params.amount);
+
+    // Guard: ID vazio
+    if (!params.applicationId) {
+      alert("ERRO: Square Application ID está vazio. Acesse Configurações e salve o ID de PRODUÇÃO do Square Developer Portal.");
+      return;
+    }
+
+    // 1. Verificação de Sandbox (Não funciona no App do Tablet)
+    if (params.applicationId.startsWith('sandbox-')) {
+      alert(`ERRO: Você está usando chaves de 'SANDBOX' (ID: ${params.applicationId}). O aplicativo da Square no iPad/Celular só aceita chaves de 'PRODUÇÃO'. Por favor, troque as chaves nas Configurações.`);
+      return;
+    }
+
     const callbackUrl = window.location.origin + window.location.pathname;
     const amountCents = Math.round(params.amount * 100);
     
-    // JSON de configuração para a Square
+    // JSON de configuração para a Square (iOS e fallback)
     const checkoutData = {
       amount_money: {
         amount: amountCents.toString(),
@@ -77,32 +94,45 @@ export const squareService = {
       version: "1.3",
       notes: params.note || "Pagamento Barbeiro",
       options: {
-        supported_tender_types: ["CREDIT_CARD", "CASH", "OTHER"]
+        supported_tender_types: ["CREDIT_CARD", "DEBIT_CARD", "CASH"]
       }
     };
 
-    // Codifica os dados para a URL
     const dataString = encodeURIComponent(JSON.stringify(checkoutData));
-    
-    // Detecção de OS
     const isAndroid = /Android/i.test(navigator.userAgent);
     
     if (isAndroid) {
-      // Para Android, o formato Intent é o mais garantido para abrir o app
-      const intentUrl = `intent:#Intent;action=com.squareup.pos.action.CHARGE;package=com.squareup;S.com.squareup.pos.WEB_CALLBACK_URI=${encodeURIComponent(callbackUrl)};S.com.squareup.pos.CLIENT_ID=${params.applicationId};S.com.squareup.pos.API_VERSION=v1.3;i.com.squareup.pos.TOTAL_AMOUNT=${amountCents};S.com.squareup.pos.CURRENCY_CODE=CAD;S.com.squareup.pos.TENDER_TYPES=com.squareup.pos.TENDER_CARD,com.squareup.pos.TENDER_CASH;S.com.squareup.pos.NOTES=${encodeURIComponent(params.note || "Venda")};end`;
+      // Android Intent - Formato recomendado pela Square
+      const intentUrl = [
+        "intent:#Intent",
+        "action=com.squareup.pos.action.CHARGE",
+        "package=com.squareup",
+        `S.com.squareup.pos.WEB_CALLBACK_URI=${encodeURIComponent(callbackUrl)}`,
+        `S.com.squareup.pos.CLIENT_ID=${params.applicationId}`,
+        `S.com.squareup.pos.API_VERSION=v1.3`,
+        `i.com.squareup.pos.TOTAL_AMOUNT=${amountCents}`,
+        `S.com.squareup.pos.CURRENCY_CODE=CAD`,
+        `S.com.squareup.pos.TENDER_TYPES=com.squareup.pos.TENDER_CARD,com.squareup.pos.TENDER_CASH`,
+        `S.com.squareup.pos.NOTES=${encodeURIComponent(params.note || "Venda")}`,
+        "end"
+      ].join(";");
+      
       window.location.href = intentUrl;
     } else {
-      // iOS usa o esquema square-commerce-v1
+      // iOS utiliza o esquema square-commerce-v1
       window.location.href = `square-commerce-v1://payment/create?data=${dataString}`;
     }
     
-    // Fallback: Se em 3 segundos não abrir o App, talvez não esteja instalado
+    // Fallback: Se o app não abrir, sugerir instalação
     setTimeout(() => {
-      if (confirm("Se o aplicativo da Square não abriu, você precisa instalá-lo para usar o leitor Bluetooth. Deseja ir para a loja de aplicativos?")) {
-        window.location.href = isAndroid 
-          ? "https://play.google.com/store/apps/details?id=com.squareup"
-          : "https://apps.apple.com/app/square-point-of-sale/id335393788";
+      // Aqui usamos um check simples: se a página ainda está visível, o app provavelmente não abriu
+      if (document.visibilityState === 'visible') {
+        if (confirm("Se o aplicativo da Square não abriu, você precisa instalá-lo ou garantir que está usando as chaves de PRODUÇÃO. Deseja conferir na App Store?")) {
+          window.location.href = isAndroid 
+            ? "https://play.google.com/store/apps/details?id=com.squareup"
+            : "https://apps.apple.com/app/square-point-of-sale/id335393788";
+        }
       }
-    }, 3000);
+    }, 3500);
   }
 };

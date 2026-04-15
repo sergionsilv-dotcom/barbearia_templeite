@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocationContext } from '../../LocationContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -11,6 +11,11 @@ export const SettingsTab: React.FC = () => {
   const { networkConfig, updateNetworkConfig } = useLocationContext();
   const [form, setForm] = useState(networkConfig);
   const [loading, setLoading] = useState(false);
+
+  // Sync form when Firebase data loads (networkConfig arrives asynchronously)
+  useEffect(() => {
+    setForm(networkConfig);
+  }, [networkConfig]);
 
   const handleSave = async () => {
     setLoading(true);

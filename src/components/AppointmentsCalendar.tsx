@@ -447,6 +447,7 @@ export const AppointmentsCalendar: React.FC<Props> = ({
         onConfirm={handleCheckout}
         onClose={() => setCheckoutAppt(null)}
         loading={isProcessing}
+        squareStatus={squareStatus}
         serviceName={services.find(s => s.id === checkoutAppt?.serviceId)?.name}
         products={products}
         cartItems={cartItems}

@@ -4,8 +4,17 @@ dist/
 coverage/
 .DS_Store
 *.log
-.env*
+
+# Variáveis de ambiente — NUNCA commitar
+.env
+.env.local
+.env.production
+
+# Manter apenas o exemplo
 !.env.example
 
-# Local Netlify folder
+# Firebase config com credenciais reais — NUNCA commitar
+firebase-applet-config.json
+
+# Netlify local
 .netlify

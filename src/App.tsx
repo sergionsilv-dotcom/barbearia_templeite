@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { firebaseUtils } from './lib/firebaseUtils';
 import { Service } from './types';
 import { LoginLock } from './components/LoginLock';
+import { toast } from 'sonner';
 
 function AppContent() {
   const { profile, isDeveloper, isLicenseActive } = useAuth();
