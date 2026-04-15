@@ -27,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isPro, setIsPro] = useState(false);
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
 
-  const isDeveloper = user?.email === 'sergionsilv@gmail.com';
+  const isDeveloper = user?.email === import.meta.env.VITE_DEVELOPER_EMAIL;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -99,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(userData);
         } else {
           // Create default profile for new user
-          const isFirstAdmin = user.email === 'sergionsilv@gmail.com';
+          const isFirstAdmin = user.email === import.meta.env.VITE_DEVELOPER_EMAIL;
           const newProfile: Barber = {
             uid: user.uid,
             name: user.displayName || 'Anonymous',

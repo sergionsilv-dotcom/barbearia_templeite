@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { useLocationContext } from '../LocationContext';
 
 export const Home: React.FC = () => {
-  const { networkConfig } = useLocationContext();
+  const { networkConfig, activeBranch } = useLocationContext();
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   return (
@@ -30,7 +30,7 @@ export const Home: React.FC = () => {
             transition={{ duration: 0.8 }}
           >
             <span className="text-amber-500 uppercase tracking-[0.3em] text-sm font-bold mb-4 block">
-              Tradição & Estilo Moderno
+              {networkConfig.slogan}
             </span>
               <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tighter uppercase leading-[0.9]">
                 {networkConfig.name.split(' ').map((word, i) => (
@@ -40,7 +40,7 @@ export const Home: React.FC = () => {
                 ))}
               </h1>
               <p className="text-lg md:text-xl text-gray-400 mb-8 max-w-xl font-medium leading-relaxed">
-                {networkConfig.slogan}. Agende seu horário e descubra o padrão {networkConfig.name.split(' ').pop()}.
+                {networkConfig.slogan}. Agende seu horário online.
               </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/agendar">
@@ -172,7 +172,7 @@ export const Home: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { name: "Ricardo Santos", text: "Melhor barbearia da região. O Sergio é extremamente detalhista e o ambiente é nota 10.", rating: 5 },
+              { name: "Ricardo Santos", text: "Melhor barbearia da região. Ambiente premium e profissionais extremamente detalhistas.", rating: 5 },
               { name: "Felipe Oliveira", text: "Atendimento impecável. O sistema de agendamento facilita muito a vida. Recomendo!", rating: 5 },
               { name: "André Luiz", text: "Ambiente premium, café de primeira e o corte sempre perfeito. Fidelidade garantida.", rating: 5 }
             ].map((review, i) => (
@@ -216,14 +216,14 @@ export const Home: React.FC = () => {
                     <MapPin className="h-6 w-6 text-amber-500 shrink-0" />
                     <div>
                       <p className="font-bold uppercase tracking-widest text-sm">Endereço</p>
-                      <p className="text-gray-400">3395 Church St, Vancouver, BC - V5R 4W7</p>
+                      <p className="text-gray-400">{activeBranch?.address || 'Configure o endereço nas Configurações'}</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-4">
                     <Phone className="h-6 w-6 text-amber-500 shrink-0" />
                     <div>
                       <p className="font-bold uppercase tracking-widest text-sm">Contato</p>
-                      <p className="text-gray-400">+1 (236) 512-8846</p>
+                      <p className="text-gray-400">{networkConfig.phone || activeBranch?.phone || 'Configure o telefone nas Configurações'}</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-4">
@@ -236,7 +236,10 @@ export const Home: React.FC = () => {
                 </div>
               </div>
               <Button 
-                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('3395 Church St, Vancouver, BC V5R 4W7')}`, '_blank')}
+                onClick={() => {
+                  const address = activeBranch?.address || networkConfig.name;
+                  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+                }}
                 className="bg-white text-black hover:bg-gray-200 px-8 rounded-none uppercase tracking-widest font-bold"
               >
                 Abrir no Google Maps

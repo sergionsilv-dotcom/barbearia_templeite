@@ -1,11 +1,12 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
-import { LocationProvider } from './LocationContext';
+import { LocationProvider, useLocationContext } from './LocationContext';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { Booking } from './pages/Booking';
 import { Gallery } from './pages/Gallery';
 import { Dashboard } from './pages/Dashboard';
+import { Setup } from './pages/Setup';
 import { Toaster } from './components/ui/sonner';
 import { useEffect } from 'react';
 import { firebaseUtils } from './lib/firebaseUtils';
@@ -67,6 +68,11 @@ function AppContent() {
     seedServices();
   }, [profile]);
 
+  const { networkConfig, loading: locationLoading } = useLocationContext();
+
+  // Detect first access: if name is still the default placeholder, go to /setup
+  const isFirstAccess = !locationLoading && (networkConfig.name === 'Minha Barbearia' || !networkConfig.name);
+
   if (!isLicenseActive && !isDeveloper) {
     return <LoginLock />;
   }
@@ -76,7 +82,8 @@ function AppContent() {
       <Router>
         <Layout>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={isFirstAccess ? <Navigate to="/setup" replace /> : <Home />} />
+            <Route path="/setup" element={<Setup />} />
             <Route path="/agendar" element={<Booking />} />
             <Route path="/galeria" element={<Gallery />} />
             <Route path="/painel" element={<Dashboard />} />

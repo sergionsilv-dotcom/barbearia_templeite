@@ -4,9 +4,11 @@ import { ShieldAlert, MessageSquare, LogOut, Code } from 'lucide-react';
 import { Button } from './ui/button';
 import { useLocationContext } from '../LocationContext';
 
+const DEV_WHATSAPP = import.meta.env.VITE_DEVELOPER_WHATSAPP || '5511999999999';
+
 export const LoginLock: React.FC = () => {
   const { logout, isDeveloper, trialDaysRemaining, isPro } = useAuth();
-  const { networkSettings } = useLocationContext();
+  const { networkConfig } = useLocationContext();
 
   const isTrialExpired = !isPro && trialDaysRemaining === 0;
 
@@ -34,13 +36,13 @@ export const LoginLock: React.FC = () => {
           <p className="text-xs text-gray-400 font-medium leading-relaxed">
             {isTrialExpired ? (
               <>
-                Olá, <strong>{networkSettings.name}</strong>. O seu período de teste de 30 dias chegou ao fim. 
+                Olá, <strong>{networkConfig.name}</strong>. O seu período de teste de 30 dias chegou ao fim. 
                 Esperamos que tenha tido uma ótima experiência! Para continuar utilizando todas as funcionalidades, 
                 entre em contato agora para ativar sua licença definitiva.
               </>
             ) : (
               <>
-                Olá, <strong>{networkSettings.name}</strong>. Constatamos uma pendência na ativação da sua licença. 
+                Olá, <strong>{networkConfig.name}</strong>. Constatamos uma pendência na ativação da sua licença. 
                 Para restabelecer o acesso total ao painel e agendamentos, entre em contato com o suporte técnico.
               </>
             )}
@@ -49,7 +51,7 @@ export const LoginLock: React.FC = () => {
 
         <div className="pt-4 flex flex-col gap-3">
           <Button 
-            onClick={() => window.open(`https://wa.me/5511999999999`, '_blank')}
+            onClick={() => window.open(`https://wa.me/${DEV_WHATSAPP}`, '_blank')}
             className="w-full bg-amber-600 hover:bg-amber-700 rounded-none uppercase font-black italic h-12"
           >
             <MessageSquare className="h-4 w-4 mr-2" /> Falar com o Desenvolvedor
@@ -80,7 +82,7 @@ export const LoginLock: React.FC = () => {
         )}
 
         <div className="text-[9px] text-gray-700 uppercase tracking-widest font-bold">
-          © {new Date().getFullYear()} {networkSettings.name} · Desenvolvido por Sergio Nunes
+          © {new Date().getFullYear()} {networkConfig.name} · Desenvolvido por BarberPro
         </div>
       </div>
     </div>

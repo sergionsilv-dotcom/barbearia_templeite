@@ -118,18 +118,19 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
           </div>
           <Scissors className="h-10 w-10 text-amber-500 mx-auto mb-6" />
           <div className="flex justify-center space-x-6 mb-8">
-            <a href="https://instagram.com/obarbeirosergio" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-amber-500 transition-colors">
-              Instagram
-            </a>
-            <a href="#" className="text-gray-400 hover:text-amber-500 transition-colors">
-              Facebook
-            </a>
-            <a href="#" className="text-gray-400 hover:text-amber-500 transition-colors">
-              WhatsApp
-            </a>
+            {networkConfig.instagram && (
+              <a href={`https://instagram.com/${networkConfig.instagram}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-amber-500 transition-colors">
+                Instagram
+              </a>
+            )}
+            {networkConfig.phone && (
+              <a href={`https://wa.me/${networkConfig.phone}`} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-amber-500 transition-colors">
+                WhatsApp
+              </a>
+            )}
           </div>
           <p className="text-xs text-gray-600 uppercase tracking-widest">
-            © 2026 O Barbeiro Sergio. Todos os direitos reservados.
+            © {new Date().getFullYear()} {networkConfig.name}. Todos os direitos reservados.
           </p>
         </div>
       </footer>

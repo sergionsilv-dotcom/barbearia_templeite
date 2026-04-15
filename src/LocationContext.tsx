@@ -24,10 +24,10 @@ interface LocationContextType {
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
 const DEFAULT_CONFIG: NetworkConfig = {
-  name: 'O Barbeiro Sergio',
-  instagram: 'obarbeirosergio',
+  name: 'Minha Barbearia',
+  instagram: '',
   phone: '',
-  slogan: 'Tradição & Estilo Moderno',
+  slogan: 'Qualidade & Estilo Moderno',
   squareLocationId: '',
   squareApplicationId: '',
 };
