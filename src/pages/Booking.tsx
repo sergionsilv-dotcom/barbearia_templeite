@@ -8,7 +8,9 @@ import { Service, Barber, Appointment, Client } from '../types';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { format, startOfToday, isBefore } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR, enUS, es, fr } from 'date-fns/locale';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '../lib/currency';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clock, CheckCircle2 } from 'lucide-react';
@@ -18,7 +20,21 @@ import { Store, Building2, MapPin as Pin } from 'lucide-react';
 
 
 export const Booking: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const { branches, networkConfig } = useLocationContext();
+
+  const getDateLocale = () => {
+    switch(networkConfig.language) {
+      case 'en-US': return enUS;
+      case 'es-ES': return es;
+      case 'fr-FR': return fr;
+      default: return ptBR;
+    }
+  };
+
+  const currencyCode = networkConfig.currency || 'BRL';
+  const locale = networkConfig.language || 'pt-BR';
+
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
@@ -67,8 +83,6 @@ export const Booking: React.FC = () => {
   // Auto-fill client data if phone exists
   useEffect(() => {
     const lookupClient = async () => {
-      // Clean phone number often contains symbols, we check the length of the string provided by PhoneInput
-      // Usually starts with '+'. We trigger lookup once we have enough digits.
       if (customerPhone.length >= 10) {
         try {
           const q = query(collection(db, 'clients'), where('phone', '==', customerPhone));
@@ -77,11 +91,10 @@ export const Booking: React.FC = () => {
           if (!snap.empty) {
             const clientData = snap.docs[0].data() as Client;
             
-            // Only fill if current fields are empty to avoid overwriting intentional changes
             if (!customerName) setCustomerName(clientData.name);
             if (!customerEmail) setCustomerEmail(clientData.email);
             
-            toast.success(`Bem-vindo de volta! Seus dados foram preenchidos.`);
+            toast.success(t('appointments.welcome_back'));
           }
         } catch (err) {
           console.error("Lookup error:", err);
@@ -91,7 +104,7 @@ export const Booking: React.FC = () => {
 
     const debounceTimer = setTimeout(lookupClient, 1000);
     return () => clearTimeout(debounceTimer);
-  }, [customerPhone, customerName, customerEmail]);
+  }, [customerPhone, customerName, customerEmail, t]);
 
   const timeSlots = [
     '10:00', '10:45', '11:30', '12:15', '13:00', '13:45', '14:30', '15:15', '16:00', '16:45', '17:30', '18:15'
@@ -100,11 +113,9 @@ export const Booking: React.FC = () => {
   const autoRegisterClient = async () => {
     if (!customerPhone) return;
     try {
-      // Check if client with this phone already exists
       const q = query(collection(db, 'clients'), where('phone', '==', customerPhone));
       const snap = await getDocs(q);
       if (snap.empty) {
-        // Register new client
         const newClient: Omit<Client, 'id'> = {
           name: customerName,
           phone: customerPhone,
@@ -114,7 +125,7 @@ export const Booking: React.FC = () => {
         await firebaseUtils.addDocument('clients', newClient);
       }
     } catch {
-      // Non-critical — booking already saved, just skip client registration
+      // Non-critical
     }
   };
 
@@ -143,12 +154,11 @@ export const Booking: React.FC = () => {
       };
 
       await firebaseUtils.addDocument('appointments', newAppointment);
-      // Auto-register the client silently
       await autoRegisterClient();
       setStep(5);
-      toast.success('Agendamento realizado com sucesso!');
+      toast.success(t('appointments.success'));
     } catch (error) {
-      toast.error('Erro ao realizar agendamento.');
+      toast.error(t('appointments.error'));
     } finally {
       setLoading(false);
     }
@@ -160,17 +170,17 @@ export const Booking: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold uppercase tracking-tighter italic mb-4">Agendamento Online</h1>
+        <h1 className="text-4xl font-bold uppercase tracking-tighter italic mb-4">{t('nav.book')}</h1>
         <div className="flex justify-center items-center space-x-4 text-[10px] uppercase tracking-widest font-bold">
-          <span className={step >= 0 ? 'text-amber-500' : 'text-gray-600'}>0. Unidade</span>
+          <span className={step >= 0 ? 'text-amber-500' : 'text-gray-600'}>0. {t('tabs.branches')}</span>
           <span className="text-gray-800">/</span>
-          <span className={step >= 1 ? 'text-amber-500' : 'text-gray-600'}>1. Serviço</span>
+          <span className={step >= 1 ? 'text-amber-500' : 'text-gray-600'}>1. {t('tabs.services')}</span>
           <span className="text-gray-800">/</span>
-          <span className={step >= 2 ? 'text-amber-500' : 'text-gray-600'}>2. Horário</span>
+          <span className={step >= 2 ? 'text-amber-500' : 'text-gray-600'}>2. {t('appointments.time')}</span>
           <span className="text-gray-800">/</span>
-          <span className={step >= 3 ? 'text-amber-500' : 'text-gray-600'}>3. Dados</span>
+          <span className={step >= 3 ? 'text-amber-500' : 'text-gray-600'}>3. {t('appointments.data')}</span>
           <span className="text-gray-800">/</span>
-          <span className={step >= 4 ? 'text-amber-500' : 'text-gray-600'}>4. Pagamento</span>
+          <span className={step >= 4 ? 'text-amber-500' : 'text-gray-600'}>4. {t('tabs.financial')}</span>
         </div>
       </div>
 
@@ -212,7 +222,7 @@ export const Booking: React.FC = () => {
                 onClick={() => setStep(1)}
                 className="bg-amber-600 hover:bg-amber-700 rounded-none px-12 py-6 uppercase tracking-widest font-bold"
               >
-                Escolher Unidade
+                {t('appointments.choose_branch')}
               </Button>
             </div>
           </motion.div>
@@ -228,17 +238,17 @@ export const Booking: React.FC = () => {
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <Label className="uppercase tracking-widest text-xs text-gray-500">Escolha o Serviço</Label>
+                <Label className="uppercase tracking-widest text-xs text-gray-500">{t('appointments.select_service')}</Label>
                 <div className="grid gap-4">
                   {services.length === 0 ? (
                     <div className="p-12 border border-dashed border-white/10 text-center space-y-4">
-                      <p className="text-gray-500 text-sm uppercase tracking-widest">Nenhum serviço disponível no momento.</p>
+                      <p className="text-gray-500 text-sm uppercase tracking-widest">{t('appointments.no_services')}.</p>
                       <Button 
                         variant="outline" 
                         onClick={() => window.open(`https://wa.me/${networkConfig.phone || ''}`, '_blank')}
                         className="rounded-none border-amber-500/50 text-amber-500 hover:bg-amber-500/10 text-[10px] uppercase tracking-widest"
                       >
-                        Falar no WhatsApp
+                         {t('common.contact')} WhatsApp
                       </Button>
                     </div>
                   ) : (
@@ -254,7 +264,7 @@ export const Booking: React.FC = () => {
                       >
                         <div className="flex justify-between items-center mb-2">
                           <h3 className="font-bold uppercase tracking-widest">{service.name}</h3>
-                          <span className="text-amber-500 font-black italic">R$ {service.price}</span>
+                          <span className="text-amber-500 font-black italic">{formatCurrency(service.price, currencyCode, locale)}</span>
                         </div>
                         <div className="flex items-center text-xs text-gray-500 space-x-4">
                           <span className="flex items-center"><Clock className="h-3 w-3 mr-1" /> {service.duration} min</span>
@@ -266,11 +276,11 @@ export const Booking: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <Label className="uppercase tracking-widest text-xs text-gray-500">Escolha o Barbeiro</Label>
+                <Label className="uppercase tracking-widest text-xs text-gray-500">{t('appointments.select_barber')}</Label>
                 <div className="grid gap-4">
                   {barbers.length === 0 ? (
                     <div className="p-8 bg-white/5 border border-white/10 text-center">
-                      <p className="text-gray-500 text-[10px] uppercase tracking-widest">Profissionais não disponíveis</p>
+                      <p className="text-gray-500 text-[10px] uppercase tracking-widest">{t('professionals.no_professionals')}</p>
                     </div>
                   ) : (
                     barbers.map((barber) => (
@@ -288,7 +298,7 @@ export const Booking: React.FC = () => {
                         </div>
                         <div>
                           <h3 className="font-bold uppercase tracking-widest">{barber.name}</h3>
-                          <p className="text-xs text-gray-500 uppercase tracking-widest">Especialista</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest">{t('professionals.specialist')}</p>
                         </div>
                       </div>
                     ))
@@ -297,13 +307,13 @@ export const Booking: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-between">
-              <Button variant="ghost" onClick={() => setStep(0)} className="uppercase tracking-widest text-xs font-bold">Voltar</Button>
+              <Button variant="ghost" onClick={() => setStep(0)} className="uppercase tracking-widest text-xs font-bold">{t('common.back')}</Button>
               <Button 
                 disabled={!selectedService || !selectedBarber}
                 onClick={() => setStep(2)}
                 className="bg-amber-600 hover:bg-amber-700 rounded-none px-12 py-6 uppercase tracking-widest font-bold"
               >
-                Próximo Passo
+                {t('common.next')}
               </Button>
             </div>
           </motion.div>
@@ -318,18 +328,18 @@ export const Booking: React.FC = () => {
             className="grid grid-cols-1 md:grid-cols-2 gap-12"
           >
             <div className="space-y-4">
-              <Label className="uppercase tracking-widest text-xs text-gray-500">Selecione a Data</Label>
+              <Label className="uppercase tracking-widest text-xs text-gray-500">{t('appointments.select_date')}</Label>
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 disabled={(date) => isBefore(date, startOfToday())}
                 className="bg-white/5 border border-white/10 rounded-none p-4"
-                locale={ptBR}
+                locale={getDateLocale()}
               />
             </div>
             <div className="space-y-4">
-              <Label className="uppercase tracking-widest text-xs text-gray-500">Horários Disponíveis</Label>
+              <Label className="uppercase tracking-widest text-xs text-gray-500">{t('appointments.select_time')}</Label>
               <div className="grid grid-cols-3 gap-2">
                 {timeSlots.map((time) => (
                   <button
@@ -347,13 +357,13 @@ export const Booking: React.FC = () => {
                 ))}
               </div>
               <div className="pt-8 flex justify-between">
-                <Button variant="ghost" onClick={() => setStep(1)} className="uppercase tracking-widest text-xs">Voltar</Button>
+                <Button variant="ghost" onClick={() => setStep(1)} className="uppercase tracking-widest text-xs">{t('common.back')}</Button>
                 <Button 
                   disabled={!selectedTime || !selectedDate}
                   onClick={() => setStep(3)}
                   className="bg-amber-600 hover:bg-amber-700 rounded-none px-12 py-6 uppercase tracking-widest font-bold"
                 >
-                  Próximo Passo
+                  {t('common.next')}
                 </Button>
               </div>
             </div>
@@ -370,43 +380,43 @@ export const Booking: React.FC = () => {
           >
             <div className="bg-white/5 border border-white/10 p-8 space-y-6">
               <div className="space-y-2">
-                <Label className="uppercase tracking-widest text-xs text-gray-500">Nome Completo</Label>
+                <Label className="uppercase tracking-widest text-xs text-gray-500">{t('clients.full_name')}</Label>
                 <Input 
                   value={customerName} 
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="bg-black border-white/10 rounded-none"
-                  placeholder="Seu nome"
+                  placeholder={t('clients.full_name_placeholder')}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="uppercase tracking-widest text-xs text-gray-500">E-mail</Label>
+                <Label className="uppercase tracking-widest text-xs text-gray-500">{t('clients.email')}</Label>
                 <Input 
                   type="email"
                   value={customerEmail} 
                   onChange={(e) => setCustomerEmail(e.target.value)}
                   className="bg-black border-white/10 rounded-none"
-                  placeholder="seu@email.com"
+                  placeholder={t('clients.email_placeholder')}
                 />
               </div>
               <div className="space-y-2">
-                <Label className="uppercase tracking-widest text-xs text-gray-500">Telefone / WhatsApp</Label>
+                <Label className="uppercase tracking-widest text-xs text-gray-500">{t('common.phone')}</Label>
                 <PhoneInput 
                   value={customerPhone} 
                   onChange={(value) => setCustomerPhone(value)}
-                  placeholder="(00) 00000-0000"
+                  placeholder={t('clients.phone_placeholder')}
                 />
               </div>
 
             </div>
 
             <div className="flex justify-between items-center">
-              <Button variant="ghost" onClick={() => setStep(2)} className="uppercase tracking-widest text-xs">Voltar</Button>
+              <Button variant="ghost" onClick={() => setStep(2)} className="uppercase tracking-widest text-xs">{t('common.back')}</Button>
               <Button 
                 disabled={!customerName || !customerPhone}
                 onClick={() => setStep(4)}
                 className="bg-amber-600 hover:bg-amber-700 rounded-none px-12 py-6 uppercase tracking-widest font-bold"
               >
-                Próximo Passo
+                {t('common.next')}
               </Button>
             </div>
           </motion.div>
@@ -421,12 +431,12 @@ export const Booking: React.FC = () => {
             className="max-w-md mx-auto space-y-8"
           >
             <div className="space-y-4">
-              <Label className="uppercase tracking-widest text-xs text-gray-500">Escolha a forma de pagamento</Label>
+              <Label className="uppercase tracking-widest text-xs text-gray-500">{t('appointments.select_payment')}</Label>
               <div className="grid gap-4">
                 {[
-                  { id: 'local', name: 'Pagar no Local', desc: 'Pague após o serviço' },
+                  { id: 'local', name: t('financial.pay_local'), desc: t('financial.pay_local_desc') },
                   { id: 'interac', name: 'Interac e-Transfer', desc: 'Transferência instantânea' },
-                  { id: 'card', name: 'Cartão (Online)', desc: 'Pague agora via Crédito/Débito' }
+                  { id: 'card', name: t('financial.pay_online'), desc: t('financial.pay_online_desc') }
                 ].map((method) => (
                   <div 
                     key={method.id}
@@ -445,24 +455,24 @@ export const Booking: React.FC = () => {
             </div>
 
             <div className="bg-amber-500/10 border border-amber-500/20 p-6 space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-amber-500">Resumo Final</h4>
-              <p className="text-sm font-bold">{selectedServiceData?.name} com {selectedBarberData?.name}</p>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-amber-500">{t('appointments.final_summary')}</h4>
+              <p className="text-sm font-bold">{selectedServiceData?.name} {t('common.with')} {selectedBarberData?.name}</p>
               <p className="text-xs text-gray-400">
-                {selectedDate && format(selectedDate, "dd 'de' MMMM", { locale: ptBR })} às {selectedTime}
+                {selectedDate && format(selectedDate, "dd 'de' MMMM", { locale: getDateLocale() })} às {selectedTime}
               </p>
               <p className="text-lg font-black italic text-amber-500">
-                Total: R$ {selectedServiceData?.price?.toFixed(2) || '0.00'}
+                Total: {formatCurrency((selectedServiceData?.price || 0), currencyCode, locale)}
               </p>
             </div>
 
             <div className="flex justify-between items-center">
-              <Button variant="ghost" onClick={() => setStep(3)} className="uppercase tracking-widest text-xs">Voltar</Button>
+              <Button variant="ghost" onClick={() => setStep(3)} className="uppercase tracking-widest text-xs">{t('common.back')}</Button>
               <Button 
                 disabled={loading}
                 onClick={handleBooking}
                 className="bg-amber-600 hover:bg-amber-700 rounded-none px-12 py-6 uppercase tracking-widest font-bold"
               >
-                {loading ? 'Processando...' : 'Finalizar Agendamento'}
+                {loading ? t('common.processing') : t('appointments.finalize')}
               </Button>
             </div>
           </motion.div>
@@ -478,16 +488,16 @@ export const Booking: React.FC = () => {
             <div className="w-20 h-20 bg-green-500/20 border border-green-500/50 flex items-center justify-center mx-auto rounded-full">
               <CheckCircle2 className="h-10 w-10 text-green-500" />
             </div>
-            <h2 className="text-3xl font-bold uppercase tracking-tighter italic">Agendamento Confirmado!</h2>
+            <h2 className="text-3xl font-bold uppercase tracking-tighter italic">{t('appointments.confirmed_title')}</h2>
             <p className="text-gray-400 max-w-sm mx-auto">
-              Seu horário foi reservado com sucesso. Te esperamos no dia {selectedDate && format(selectedDate, "dd/MM")} às {selectedTime}!
+              {t('appointments.confirmed_desc', { date: (selectedDate && format(selectedDate, "dd/MM")), time: selectedTime })}
             </p>
             <button
               type="button"
               onClick={() => window.location.href = '/'}
               className="border border-white/20 bg-transparent text-white px-8 py-3 uppercase tracking-widest text-xs font-bold hover:bg-white/5 transition-colors"
             >
-              Voltar para o Início
+              {t('nav.home')}
             </button>
           </motion.div>
         )}

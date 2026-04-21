@@ -13,9 +13,11 @@ import { firebaseUtils } from './lib/firebaseUtils';
 import { Service } from './types';
 import { LoginLock } from './components/LoginLock';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 function AppContent() {
   const { profile, isDeveloper, isLicenseActive } = useAuth();
+  const { t } = useTranslation();
 
   // Apply dark theme globally (including Dialog/Popover portals)
   useEffect(() => {
@@ -28,13 +30,13 @@ function AppContent() {
       try {
         const decoded = JSON.parse(decodeURIComponent(squareData));
         if (decoded.status === 'ok') {
-          toast.success('PAGAMENTO APROVADO NA SQUARE!', {
-            description: 'A transação foi concluída. Você já pode finalizar o atendimento no painel.',
+          toast.success(t('financial.square_success'), {
+            description: t('financial.square_success_desc'),
             duration: 10000,
           });
         } else if (decoded.status === 'error') {
-          toast.error('ERRO NO PAGAMENTO', {
-            description: 'Ocorreu um problema no app da Square. Tente novamente.',
+          toast.error(t('financial.square_error'), {
+            description: t('financial.square_error_desc'),
           });
         }
       } catch (e) {
