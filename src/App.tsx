@@ -1,12 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, useAuth } from './AuthContext';
-import { LocationProvider, useLocationContext } from './LocationContext';
+import { LocationProvider } from './LocationContext';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { Booking } from './pages/Booking';
 import { Gallery } from './pages/Gallery';
 import { Dashboard } from './pages/Dashboard';
-import { Setup } from './pages/Setup';
 import { Toaster } from './components/ui/sonner';
 import { useEffect } from 'react';
 import { firebaseUtils } from './lib/firebaseUtils';
@@ -14,36 +13,23 @@ import { Service } from './types';
 import { LoginLock } from './components/LoginLock';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import './i18n'; // Initialize i18n
 
 function AppContent() {
   const { profile, isDeveloper, isLicenseActive } = useAuth();
   const { t } = useTranslation();
 
-  // Apply dark theme globally (including Dialog/Popover portals)
   useEffect(() => {
+    // Apply dark theme globally
     document.documentElement.classList.add('dark');
     
-    // Check for Square Callback
+    // Check for Square Callback (if adding square later)
     const urlParams = new URLSearchParams(window.location.search);
-    const squareData = urlParams.get('data');
-    if (squareData) {
-      try {
-        const decoded = JSON.parse(decodeURIComponent(squareData));
-        if (decoded.status === 'ok') {
-          toast.success(t('financial.square_success'), {
-            description: t('financial.square_success_desc'),
-            duration: 10000,
-          });
-        } else if (decoded.status === 'error') {
-          toast.error(t('financial.square_error'), {
-            description: t('financial.square_error_desc'),
-          });
-        }
-      } catch (e) {
-        console.error('Square callback parse error', e);
-      }
+    const success = urlParams.get('success');
+    if (success === 'true') {
+      toast.success(t('booking.success'));
     }
-  }, []);
+  }, [t]);
 
   // Seed initial services if none exist and user is admin
   useEffect(() => {
@@ -70,11 +56,6 @@ function AppContent() {
     seedServices();
   }, [profile]);
 
-  const { networkConfig, loading: locationLoading } = useLocationContext();
-
-  // Detect first access: if name is still the default placeholder, go to /setup
-  const isFirstAccess = !locationLoading && (networkConfig.name === 'Minha Barbearia' || !networkConfig.name);
-
   if (!isLicenseActive && !isDeveloper) {
     return <LoginLock />;
   }
@@ -84,8 +65,7 @@ function AppContent() {
       <Router>
         <Layout>
           <Routes>
-            <Route path="/" element={isFirstAccess ? <Navigate to="/setup" replace /> : <Home />} />
-            <Route path="/setup" element={<Setup />} />
+            <Route path="/" element={<Home />} />
             <Route path="/agendar" element={<Booking />} />
             <Route path="/galeria" element={<Gallery />} />
             <Route path="/painel" element={<Dashboard />} />

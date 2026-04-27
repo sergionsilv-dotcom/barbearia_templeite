@@ -121,6 +121,7 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
   };
 
   const handleDelete = async (pro: Barber) => {
+    // Check if professional has any appointments or sales records
     const [aptsSnap, salesSnap] = await Promise.all([
       getDocs(query(collection(db, 'appointments'), where('barberId', '==', pro.uid))),
       getDocs(query(collection(db, 'sales'), where('barberId', '==', pro.uid))),
@@ -183,6 +184,7 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
               key={pro.uid}
               className="bg-white/[0.02] border border-white/10 p-6 space-y-4 hover:border-amber-500/30 transition-colors"
             >
+              {/* Header */}
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
@@ -206,6 +208,11 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
                           GERENTE
                         </Badge>
                       )}
+                      {pro.location && (
+                        <Badge variant="outline" className="rounded-none text-[10px] border-white/5 bg-white/5 text-gray-500 uppercase tracking-widest">
+                          {pro.location}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -222,6 +229,7 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
                       size="icon" variant="ghost"
                       className="h-7 w-7 text-green-500 hover:bg-green-500/10"
                       onClick={() => handleReactivate(pro.uid)}
+                      title="Reativar profissional"
                     >
                       <RotateCcw className="h-3 w-3" />
                     </Button>
@@ -237,10 +245,12 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
                 </div>
               </div>
 
+              {/* Bio */}
               {pro.bio && (
                 <p className="text-xs text-gray-500 leading-relaxed">{pro.bio}</p>
               )}
 
+              {/* Specialties */}
               {pro.specialties && pro.specialties.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {pro.specialties.map((s, i) => (
@@ -254,20 +264,37 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
                 </div>
               )}
 
+              {/* Payment type */}
               <div className="pt-3 border-t border-white/5">
                 {pro.paymentType === 'commission' ? (
                   <div className="flex flex-col gap-1 text-xs text-amber-500 font-bold uppercase tracking-widest">
                     <div className="flex items-center">
                       <Percent className="h-3 w-3 mr-1.5" />
-                      {pro.commissionRate ?? 0}% {t('professionals.commission')}
+                      {pro.commissionRate ?? 0}% {t('professionals.commission')} ({t('tabs.services')})
+                    </div>
+                    <div className="flex items-center text-sky-500">
+                      <TrendingUp className="h-3 w-3 mr-1.5" />
+                      {pro.productCommissionRate ?? 0}% {t('professionals.commission')} ({t('tabs.inventory')})
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1 text-xs text-green-400 font-bold uppercase tracking-widest">
                     <div className="flex items-center">
                       <DollarSign className="h-3 w-3 mr-1.5" />
-                      R$ {(pro.salaryAmount ?? 0).toFixed(2)}
+                      R$ {(pro.salaryAmount ?? 0).toFixed(2)} / mês
                     </div>
+                    {pro.productCommissionRate && pro.productCommissionRate > 0 && (
+                      <div className="flex items-center text-sky-500">
+                        <TrendingUp className="h-3 w-3 mr-1.5" />
+                        {pro.productCommissionRate}% {t('professionals.commission')} ({t('tabs.inventory')})
+                      </div>
+                    )}
+                  </div>
+                )}
+                {pro.isManager && (pro.managerBonus ?? 0) > 0 && (
+                  <div className="mt-2 pt-2 border-t border-white/[0.03] flex items-center text-[10px] text-amber-500/80 font-bold uppercase tracking-widest">
+                    <TrendingUp className="h-3 w-3 mr-1.5" />
+                    + R$ {pro.managerBonus?.toFixed(2)} {t('professionals.manager_bonus')}
                   </div>
                 )}
               </div>
@@ -276,7 +303,7 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
         </div>
       )}
 
-      {/* Modal is same as source, simplified for brevity in this call but must be complete in reality */}
+      {/* Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="bg-[#111] border-white/10 rounded-none text-white max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -286,47 +313,245 @@ export const ProfessionalsTab: React.FC<{ activeBranchId?: string | null }> = ({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Nome */}
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-widest text-gray-400">{t('professionals.name')} *</Label>
               <Input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="bg-white/5 border-white/10 rounded-none"
+                className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                placeholder={t('professionals.name')}
               />
             </div>
+
+            {/* Email para Login */}
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-widest text-amber-500 font-bold">{t('professionals.email_login')} *</Label>
               <Input
                 type="email"
                 value={form.email || ''}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                className="bg-white/5 border-white/10 rounded-none"
+                className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                placeholder="email@gmail.com"
+              />
+              <p className="text-[10px] text-gray-600 uppercase">Usado para o profissional acessar seu próprio painel via Google Login.</p>
+            </div>
+
+            {/* Bio */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('professionals.bio')}</Label>
+              <textarea
+                value={form.bio || ''}
+                onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+                className="w-full bg-white/5 border border-white/10 rounded-none p-3 text-sm text-white resize-none h-16 focus:outline-none focus:border-amber-500 placeholder:text-gray-600"
+                placeholder={t('professionals.bio')}
               />
             </div>
+
+            {/* Especialidades */}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('professionals.specialties')}</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={specialtyInput}
+                  onChange={e => setSpecialtyInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSpecialty(); } }}
+                  className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                  placeholder="Ex: Corte degradê"
+                />
+                <Button
+                  type="button"
+                  onClick={addSpecialty}
+                  variant="outline"
+                  className="border-white/10 rounded-none px-3 flex-shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {(form.specialties || []).length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {(form.specialties || []).map((s, i) => (
+                    <span
+                      key={i}
+                      className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest bg-white/5 px-2 py-1 text-gray-400 border border-white/10"
+                    >
+                      {s}
+                      <button
+                        onClick={() => removeSpecialty(i)}
+                        className="text-red-400 hover:text-red-300 leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Tipo de Pagamento */}
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-widest text-gray-400">{t('professionals.payment_type')}</Label>
               <div className="flex gap-0">
                 <button
                   type="button"
                   onClick={() => setForm(f => ({ ...f, paymentType: 'commission' }))}
-                  className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-bold border ${form.paymentType === 'commission' ? 'bg-amber-600 text-white' : 'text-gray-400'}`}
+                  className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-bold border transition-colors ${
+                    form.paymentType === 'commission'
+                      ? 'bg-amber-600 border-amber-600 text-white'
+                      : 'bg-transparent border-white/10 text-gray-400 hover:border-white/30'
+                  }`}
                 >
-                  {t('professionals.commission')}
+                  <Percent className="h-3 w-3 inline mr-1" /> {t('professionals.commission')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setForm(f => ({ ...f, paymentType: 'salary' }))}
-                  className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-bold border ${form.paymentType === 'salary' ? 'bg-amber-600 text-white' : 'text-gray-400'}`}
+                  className={`flex-1 py-2.5 text-xs uppercase tracking-widest font-bold border-t border-b border-r transition-colors ${
+                    form.paymentType === 'salary'
+                      ? 'bg-amber-600 border-amber-600 text-white'
+                      : 'bg-transparent border-white/10 text-gray-400 hover:border-white/30'
+                  }`}
                 >
-                  {t('professionals.salary')}
+                  <DollarSign className="h-3 w-3 inline mr-1" /> {t('professionals.salary')}
                 </button>
               </div>
             </div>
+
+            {/* Valor */}
+            {form.paymentType === 'commission' ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    {t('professionals.services_commission')}
+                  </Label>
+                  <Input
+                    type="number" min="0" max="100"
+                    value={form.commissionRate ?? ''}
+                    onChange={e => setForm(f => ({ ...f, commissionRate: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 40"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    {t('professionals.products_commission')}
+                  </Label>
+                  <Input
+                    type="number" min="0" max="100"
+                    value={form.productCommissionRate ?? ''}
+                    onChange={e => setForm(f => ({ ...f, productCommissionRate: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 10"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    {t('professionals.monthly_salary')}
+                  </Label>
+                  <Input
+                    type="number" min="0" step="50"
+                    value={form.salaryAmount ?? ''}
+                    onChange={e => setForm(f => ({ ...f, salaryAmount: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 2500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    {t('professionals.products_commission')}
+                  </Label>
+                  <Input
+                    type="number" min="0" max="100"
+                    value={form.productCommissionRate ?? ''}
+                    onChange={e => setForm(f => ({ ...f, productCommissionRate: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 10"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Gerência */}
+            <div className="pt-4 border-t border-white/5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-xs uppercase tracking-widest text-amber-500 font-bold">{t('professionals.manager_role')}</Label>
+                  <p className="text-[10px] text-gray-600 uppercase">Habilita bônus fixo mensal</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.isManager}
+                  onChange={e => setForm(f => ({ ...f, isManager: e.target.checked }))}
+                  className="h-4 w-4 rounded-none bg-white/5 border-white/10 text-amber-500 focus:ring-amber-500 accent-amber-500"
+                />
+              </div>
+
+              {form.isManager && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                  <Label className="text-xs uppercase tracking-widest text-gray-400">
+                    {t('professionals.manager_bonus')}
+                  </Label>
+                  <Input
+                    type="number" min="0" step="50"
+                    value={form.managerBonus ?? ''}
+                    onChange={e => setForm(f => ({ ...f, managerBonus: Number(e.target.value) }))}
+                    className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
+                    placeholder="Ex: 500"
+                  />
+                  <p className="text-[10px] text-gray-600 italic">
+                    Este valor será SOMADO à comissão ou salário no financeiro.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Unidade / Loja */}
+            <div className="space-y-2 pt-4 border-t border-white/5">
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('professionals.branch')}</Label>
+              <Select 
+                value={form.locationId || 'all'} 
+                onValueChange={(val) => {
+                  const b = branches.find(x => x.id === val);
+                  setForm(f => ({ 
+                    ...f, 
+                    locationId: val === 'all' ? '' : val,
+                    location: b ? b.name : '' 
+                  }));
+                }}
+              >
+                <SelectTrigger className="bg-white/5 border-white/10 rounded-none h-10 uppercase tracking-widest text-[10px]">
+                  <SelectValue placeholder={t('professionals.all_branches')} />
+                </SelectTrigger>
+                <SelectContent className="bg-[#111] border-white/10 text-white rounded-none">
+                  <SelectItem value="all" className="uppercase tracking-widest text-[10px]">{t('professionals.all_branches')}</SelectItem>
+                  {branches.map(b => (
+                    <SelectItem key={b.id} value={b.id} className="uppercase tracking-widest text-[10px]">
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-gray-600 uppercase">Selecione a unidade principal deste profissional.</p>
+            </div>
           </div>
 
-          <DialogFooter>
-            <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest text-xs font-bold">
-              {t('common.save')}
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setModalOpen(false)}
+              className="border-white/10 rounded-none uppercase tracking-widest text-xs"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest text-xs font-bold"
+            >
+              {saving ? t('common.loading') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

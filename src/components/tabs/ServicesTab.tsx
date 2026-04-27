@@ -6,10 +6,12 @@ import { Input } from '../ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Clock, Building2, Store } from 'lucide-react';
+import { Plus, Edit2, Trash2, Clock, Store } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useLocationContext } from '../../LocationContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '../../lib/currency';
 
 const emptyService = (): Omit<Service, 'id'> => ({
   name: '',
@@ -20,8 +22,9 @@ const emptyService = (): Omit<Service, 'id'> => ({
 });
 
 export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ activeBranchId }) => {
+  const { t } = useTranslation();
   const { profile } = useAuth();
-  const { branches, activeBranch } = useLocationContext();
+  const { branches, activeBranch, networkConfig } = useLocationContext();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -45,6 +48,8 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
   }, [activeBranchId, activeBranch]);
 
   const isAdmin = profile?.role === 'admin';
+  const currencyCode = networkConfig.currency || 'BRL';
+  const locale = networkConfig.language || 'pt-BR';
 
   const openAdd = () => {
     setEditing(null);
@@ -66,33 +71,33 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
 
   const handleSave = async () => {
     if (!form.name.trim() || form.price <= 0) {
-      toast.error('Nome e preço são obrigatórios');
+      toast.error(t('services_tab.required'));
       return;
     }
     setSaving(true);
     try {
       if (editing) {
         await firebaseUtils.updateDocument<Service>('services', editing.id, form);
-        toast.success('Serviço atualizado!');
+        toast.success(t('services_tab.save_success'));
       } else {
         await firebaseUtils.addDocument('services', form);
-        toast.success('Serviço criado!');
+        toast.success(t('services_tab.save_success'));
       }
       setModalOpen(false);
     } catch {
-      toast.error('Erro ao salvar serviço');
+      toast.error(t('services_tab.save_error'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir este serviço?')) return;
+    if (!window.confirm(t('services_tab.delete_confirm'))) return;
     try {
       await firebaseUtils.deleteDocument('services', id);
-      toast.success('Serviço excluído');
+      toast.success(t('services_tab.delete_success'));
     } catch {
-      toast.error('Erro ao excluir');
+      toast.error(t('services_tab.delete_error'));
     }
   };
 
@@ -104,14 +109,14 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
             onClick={openAdd}
             className="bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest text-xs font-bold"
           >
-            <Plus className="h-4 w-4 mr-2" /> Novo Serviço
+            <Plus className="h-4 w-4 mr-2" /> {t('services_tab.new_svc')}
           </Button>
         </div>
       )}
 
       {loading ? (
         <div className="p-12 text-center text-gray-500 uppercase tracking-widest text-xs animate-pulse">
-          Carregando...
+            {t('common.loading')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -153,12 +158,12 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
                   </div>
                   {svc.locationId && (
                     <div className="flex items-center text-[9px] text-amber-500/50 uppercase tracking-tighter">
-                      <Store className="h-2.5 w-2.5 mr-1" /> {branches.find(b => b.id === svc.locationId)?.name || 'Unidade'}
+                      <Store className="h-2.5 w-2.5 mr-1" /> {branches.find(b => b.id === svc.locationId)?.name || 'Unit'}
                     </div>
                   )}
                 </div>
                 <div className="text-amber-500 font-black italic text-2xl">
-                  R$ {svc.price.toFixed(2)}
+                  {formatCurrency(svc.price, currencyCode, locale)}
                 </div>
               </div>
             </div>
@@ -166,7 +171,7 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
 
           {services.length === 0 && (
             <div className="col-span-3 p-12 text-center text-gray-500 uppercase tracking-widest text-xs">
-              Nenhum serviço cadastrado.
+                {t('services_tab.no_services')}
             </div>
           )}
         </div>
@@ -177,31 +182,31 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
         <DialogContent className="bg-[#111] border-white/10 rounded-none text-white max-w-md">
           <DialogHeader>
             <DialogTitle className="uppercase tracking-widest font-bold text-base">
-              {editing ? 'Editar Serviço' : 'Novo Serviço'}
+              {editing ? t('services_tab.edit_svc') : t('services_tab.new_svc')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Nome *</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('services_tab.svc_name')} *</Label>
               <Input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
-                placeholder="Ex: Corte Social"
+                placeholder="Ex: Social Cut"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Descrição</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('services_tab.svc_desc')}</Label>
               <textarea
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 className="w-full bg-white/5 border border-white/10 rounded-none p-3 text-sm text-white resize-none h-16 focus:outline-none focus:border-amber-500 placeholder:text-gray-600"
-                placeholder="Descrição do serviço..."
+                placeholder={t('services_tab.svc_desc') + "..."}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-widest text-gray-400">Preço (R$) *</Label>
+                <Label className="text-xs uppercase tracking-widest text-gray-400">{t('services_tab.svc_price')} *</Label>
                 <Input
                   type="number" min="0" step="0.01"
                   value={form.price || ''}
@@ -211,7 +216,7 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-widest text-gray-400">Duração (min)</Label>
+                <Label className="text-xs uppercase tracking-widest text-gray-400">{t('services_tab.svc_duration')}</Label>
                 <Input
                   type="number" min="5" step="5"
                   value={form.duration || ''}
@@ -223,16 +228,16 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Unidade / Loja</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('services_tab.svc_location')}</Label>
               <Select 
                 value={form.locationId || 'all'} 
                 onValueChange={(val) => setForm(f => ({ ...f, locationId: val === 'all' ? '' : val }))}
               >
                 <SelectTrigger className="bg-white/5 border-white/10 rounded-none h-10 uppercase tracking-widest text-[10px]">
-                  <SelectValue placeholder="Todas as Unidades (Global)" />
+                  <SelectValue placeholder={t('services_tab.svc_global')} />
                 </SelectTrigger>
                 <SelectContent className="bg-[#111] border-white/10 text-white rounded-none">
-                  <SelectItem value="all" className="uppercase tracking-widest text-[10px]">Todas as Unidades (Global)</SelectItem>
+                  <SelectItem value="all" className="uppercase tracking-widest text-[10px]">{t('services_tab.svc_global')}</SelectItem>
                   {branches.map(b => (
                     <SelectItem key={b.id} value={b.id} className="uppercase tracking-widest text-[10px]">
                       {b.name}
@@ -240,7 +245,7 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-gray-600 uppercase">Se vazio, o serviço aparecerá em todas as unidades.</p>
+              <p className="text-[10px] text-gray-600 uppercase">{t('services_tab.svc_helper')}</p>
             </div>
           </div>
           <DialogFooter className="gap-2">
@@ -249,14 +254,14 @@ export const ServicesTab: React.FC<{ activeBranchId?: string | null }> = ({ acti
               onClick={() => setModalOpen(false)}
               className="border-white/10 rounded-none uppercase tracking-widest text-xs"
             >
-              Cancelar
+              {t('common.back')}
             </Button>
             <Button
               onClick={handleSave}
               disabled={saving}
               className="bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest text-xs font-bold"
             >
-              {saving ? 'Salvando...' : 'Salvar'}
+              {saving ? t('common.processing') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

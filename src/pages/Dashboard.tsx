@@ -26,7 +26,7 @@ import React, { useState, useEffect } from 'react';
 
 export const Dashboard: React.FC = () => {
   const { t } = useTranslation();
-  const { profile, hasPermission, trialDaysRemaining, isPro, loading: authLoading } = useAuth();
+  const { profile, hasPermission, isDeveloper, trialDaysRemaining, isPro, loading: authLoading } = useAuth();
   const { branches, activeBranchId, setActiveBranchId, activeBranch, networkConfig } = useLocationContext();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -47,7 +47,11 @@ export const Dashboard: React.FC = () => {
         const sorted = filteredByLocation.sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
-        setAppointments(profile.role === 'barber' ? sorted.filter(a => a.barberId === profile.uid) : sorted);
+        setAppointments(
+          profile.role === 'barber'
+            ? sorted.filter(a => a.barberId === profile.uid)
+            : sorted
+        );
         setLoading(false);
       }
     );
@@ -62,15 +66,41 @@ export const Dashboard: React.FC = () => {
     return () => { unsubApt(); unsubSvc(); unsubCli(); };
   }, [profile, activeBranchId, activeBranch]);
 
-  if (authLoading) return <div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (authLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!profile || (profile.role !== 'admin' && profile.role !== 'manager' && profile.role !== 'barber')) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center space-y-6">
-        <UserCircle className="h-16 w-16 text-gray-600" />
-        <h2 className="text-xl font-bold uppercase tracking-widest text-white">{t('dashboard.access_denied')}</h2>
-        <p className="text-gray-500 text-sm">{t('dashboard.access_denied_msg', { name: networkConfig.name })}</p>
-        <Button onClick={() => window.location.href = '/'}>{t('nav.home')}</Button>
+        <div className="w-16 h-16 bg-white/5 flex items-center justify-center rounded-full">
+          <UserCircle className="h-8 w-8 text-gray-600" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold uppercase tracking-widest text-white">{t('dashboard.access_denied')}</h2>
+          <p className="text-gray-500 text-sm max-w-xs mx-auto">
+            {t('dashboard.access_denied_msg', { name: networkConfig.name || 'BarberPro' })}
+          </p>
+        </div>
+        <div className="pt-4 flex flex-col gap-3 w-full max-w-xs">
+          <Button 
+            onClick={() => window.location.href = '/agendar'}
+            className="bg-amber-600 hover:bg-amber-700 text-white rounded-none uppercase tracking-widest text-xs font-black py-6"
+          >
+            {t('home.book_now')}
+          </Button>
+          <Button 
+            variant="ghost"
+            onClick={() => window.location.href = '/'}
+            className="text-gray-500 hover:text-white uppercase tracking-widest text-[10px]"
+          >
+            {t('nav.home')}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -80,41 +110,262 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-4">
         <div>
           <h1 className="text-4xl font-black uppercase tracking-tighter italic">{t('dashboard.title')}</h1>
-          <p className="text-gray-500 uppercase tracking-widest text-xs font-bold mt-2">{t('dashboard.welcome')}, {profile.name}</p>
+          <p className="text-gray-500 uppercase tracking-widest text-xs font-bold mt-2">
+            {t('dashboard.welcome')}, {profile.name}
+            <span className="ml-2 text-amber-500">· {profile.role}</span>
+          </p>
         </div>
         
         <div className="flex items-center gap-4">
           {!isPro && trialDaysRemaining !== null && (
-            <div className="px-3 py-1.5 border border-amber-500/20 bg-amber-500/10 flex flex-col items-center">
-              <span className="text-[8px] uppercase tracking-widest font-black text-amber-500">{t('dashboard.trial_period')}</span>
-              <span className="text-sm font-black italic text-white -mt-1">{trialDaysRemaining} {t('dashboard.days')}</span>
+            <div className={`px-3 py-1.5 border ${
+              trialDaysRemaining <= 5 
+                ? 'bg-red-500/10 border-red-500/20 animate-pulse' 
+                : 'bg-amber-500/10 border-amber-500/20'
+            } flex flex-col items-center justify-center`}>
+              <span className={`text-[8px] uppercase tracking-widest font-black ${
+                trialDaysRemaining <= 5 ? 'text-red-500' : 'text-amber-500'
+              }`}>
+                {t('dashboard.trial_period')}
+              </span>
+              <span className="text-sm font-black italic text-white -mt-1">
+                {trialDaysRemaining} {trialDaysRemaining === 1 ? t('dashboard.day') : t('dashboard.days')}
+              </span>
             </div>
           )}
-          <Button variant="outline" onClick={() => setActiveTab('settings')}><Settings className="h-4 w-4 mr-2" /> {t('dashboard.settings')}</Button>
+
+          <div className="flex flex-col items-end mr-4 hidden md:flex">
+             <span className="text-[10px] uppercase tracking-widest font-black text-amber-500">{t('dashboard.active_branch')}</span>
+             <Select value={activeBranchId || ''} onValueChange={setActiveBranchId}>
+               <SelectTrigger className="w-[200px] h-9 bg-white/5 border-white/10 rounded-none uppercase tracking-widest text-[10px] font-bold">
+                 <SelectValue placeholder={t('dashboard.select_branch')} />
+               </SelectTrigger>
+               <SelectContent className="bg-[#111] border-white/10 text-white rounded-none">
+                 {isAdmin && (
+                    <SelectItem value="all" className="uppercase tracking-widest text-[10px] font-bold hover:bg-amber-600 focus:bg-amber-600 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-3 w-3" />
+                         {t('dashboard.all_branches')}
+                      </div>
+                    </SelectItem>
+                  )}
+                 {branches.map(b => (
+                   <SelectItem key={b.id} value={b.id} className="uppercase tracking-widest text-[10px] font-bold hover:bg-amber-600 focus:bg-amber-600 cursor-pointer">
+                     <div className="flex items-center gap-2">
+                       {b.isMain ? <Building2 className="h-3 w-3" /> : <Store className="h-3 w-3" />}
+                       {b.name}
+                     </div>
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => setActiveTab('settings')}
+            className="border-white/10 rounded-none uppercase tracking-widest text-xs font-bold"
+          >
+            <Settings className="h-4 w-4 mr-2" /> {t('dashboard.settings')}
+          </Button>
         </div>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-        <Card className="bg-white/[0.02] border-white/10 rounded-none"><CardHeader><CardTitle className="text-xs uppercase text-gray-500">{t('dashboard.total_appointments')}</CardTitle></CardHeader><CardContent><div className="text-3xl font-black italic text-amber-500">{appointments.length}</div></CardContent></Card>
-        <Card className="bg-white/[0.02] border-white/10 rounded-none"><CardHeader><CardTitle className="text-xs uppercase text-gray-500">{t('dashboard.pending')}</CardTitle></CardHeader><CardContent><div className="text-3xl font-black italic text-white">{pendingCount}</div></CardContent></Card>
+        <Card className="bg-white/[0.02] border-white/10 rounded-none">
+          <CardHeader className="pb-1 pt-4 px-4">
+            <CardTitle className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+              {t('dashboard.total_appointments')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="text-3xl font-black italic text-amber-500">{appointments.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/[0.02] border-white/10 rounded-none">
+          <CardHeader className="pb-1 pt-4 px-4">
+            <CardTitle className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+              {t('dashboard.pending')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="text-3xl font-black italic text-white">{pendingCount}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/[0.02] border-white/10 rounded-none">
+          <CardHeader className="pb-1 pt-4 px-4">
+            <CardTitle className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+              {t('dashboard.active_services')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="text-3xl font-black italic text-white">{services.length}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/[0.02] border-white/10 rounded-none">
+          <CardHeader className="pb-1 pt-4 px-4">
+            <CardTitle className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+              {t('dashboard.clients')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="text-3xl font-black italic text-white">{clients.length}</div>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-        <TabsList className="bg-white/5 rounded-none p-1 border border-white/10 h-auto gap-1">
-          <TabsTrigger value="appointments" className="rounded-none uppercase tracking-widest text-xs"><Calendar className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.appointments')}</TabsTrigger>
-          <TabsTrigger value="clients" className="rounded-none uppercase tracking-widest text-xs"><UserCircle className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.clients')}</TabsTrigger>
-          {(hasPermission('view_financials') || profile.role === 'barber') && <TabsTrigger value="payments" className="rounded-none uppercase tracking-widest text-xs"><DollarSign className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.financial')}</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="professionals" className="rounded-none uppercase tracking-widest text-xs"><Users className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.professionals')}</TabsTrigger>}
+        <TabsList className="bg-white/5 rounded-none p-1 border border-white/10 flex-wrap h-auto gap-1">
+          <TabsTrigger
+            value="appointments"
+            className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+          >
+            <Calendar className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.appointments')}
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="clients"
+            className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+          >
+            <UserCircle className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.clients')}
+          </TabsTrigger>
+
+          {hasPermission('manage_inventory') && (
+            <TabsTrigger
+              value="inventory"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <Package className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.inventory')}
+            </TabsTrigger>
+          )}
+
+          {hasPermission('manage_expenses') && (
+            <TabsTrigger
+              value="expenses"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <Receipt className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.expenses')}
+            </TabsTrigger>
+          )}
+
+          {(hasPermission('view_financials') || profile.role === 'barber') && (
+            <TabsTrigger
+              value="payments"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <DollarSign className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.financial')}
+            </TabsTrigger>
+          )}
+
+          {hasPermission('manage_services') && (
+            <TabsTrigger
+              value="services"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <Scissors className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.services')}
+            </TabsTrigger>
+          )}
+
+          {isAdmin && (
+            <TabsTrigger
+              value="professionals"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <Users className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.professionals')}
+            </TabsTrigger>
+          )}
+
+          {isAdmin && (
+            <TabsTrigger
+              value="team"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <UserCog className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.team')}
+            </TabsTrigger>
+          )}
+
+          {isAdmin && (
+            <TabsTrigger
+              value="branches"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <Building2 className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.branches')}
+            </TabsTrigger>
+          )}
+
+          {isAdmin && (
+            <TabsTrigger
+              value="settings"
+              className="rounded-none uppercase tracking-widest text-xs font-bold text-gray-300 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+            >
+              <Globe className="h-3.5 w-3.5 mr-1.5" /> {t('tabs.brand')}
+            </TabsTrigger>
+          )}
         </TabsList>
 
-        <TabsContent value="appointments"><AppointmentsTab /></TabsContent>
-        <TabsContent value="clients"><ClientsTab /></TabsContent>
-        <TabsContent value="payments"><PaymentsTab /></TabsContent>
-        {isAdmin && <TabsContent value="professionals"><ProfessionalsTab activeBranchId={activeBranchId} /></TabsContent>}
-        {isAdmin && <TabsContent value="settings"><SettingsTab /></TabsContent>}
+        <TabsContent value="appointments" className="space-y-4">
+          <AppointmentsTab />
+        </TabsContent>
+
+        <TabsContent value="clients">
+          <ClientsTab />
+        </TabsContent>
+
+        {hasPermission('manage_inventory') && (
+          <TabsContent value="inventory">
+            <InventoryTab />
+          </TabsContent>
+        )}
+
+        {hasPermission('manage_expenses') && (
+          <TabsContent value="expenses">
+            <ExpensesTab />
+          </TabsContent>
+        )}
+
+        {(hasPermission('view_financials') || profile.role === 'barber') && (
+          <TabsContent value="payments">
+            <PaymentsTab />
+          </TabsContent>
+        )}
+
+        {hasPermission('manage_services') && (
+          <TabsContent value="services">
+            <ServicesTab activeBranchId={activeBranchId} />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="professionals">
+            <ProfessionalsTab activeBranchId={activeBranchId} />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="team">
+            <AdminUsersTab />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="branches">
+            <BranchesTab />
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="settings">
+            <SettingsTab />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

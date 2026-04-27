@@ -1,79 +1,104 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { db } from './firebase';
-import { collection, onSnapshot, doc } from 'firebase/firestore';
-import { Branch, NetworkConfig } from './types';
-import { useTranslation } from 'react-i18next';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { firebaseUtils } from './lib/firebaseUtils';
+import { Branch } from './types';
+import i18n from './i18n';
+
+interface NetworkConfig {
+  name: string;
+  instagram: string;
+  phone: string;
+  slogan: string;
+  squareLocationId?: string;
+  squareApplicationId?: string;
+  language?: string;
+  currency?: string;
+}
 
 interface LocationContextType {
   branches: Branch[];
+  activeBranchId: string | null;
+  activeBranch: Branch | null;
+  setActiveBranchId: (id: string) => void;
   networkConfig: NetworkConfig;
-  activeBranch: string | null;
-  setActiveBranch: (id: string | null) => void;
+  updateNetworkConfig: (config: Partial<NetworkConfig>) => Promise<void>;
   loading: boolean;
 }
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
 const DEFAULT_CONFIG: NetworkConfig = {
-  id: 'main',
-  name: 'Barbearia System',
-  logo: '',
-  favicon: '',
-  primaryColor: '#b45309',
-  secondaryColor: '#1e1b4b',
-  instagram: '',
-  facebook: '',
-  whatsapp: '',
+  name: 'BarberPro',
+  instagram: 'your_barbershop',
   phone: '',
-  slogan: 'Tradição e Modernidade',
-  about: '',
+  slogan: 'Tradição & Estilo Moderno',
+  squareLocationId: '',
+  squareApplicationId: '',
   language: 'pt-BR',
   currency: 'BRL',
-  updatedAt: new Date().toISOString()
 };
 
 export const LocationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { i18n } = useTranslation();
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [activeBranchId, setActiveBranchId] = useState<string | null>(localStorage.getItem('activeBranchId'));
   const [networkConfig, setNetworkConfig] = useState<NetworkConfig>(DEFAULT_CONFIG);
-  const [activeBranch, setActiveBranch] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listen to network configuration
-    const configUnsubscribe = onSnapshot(doc(db, 'config', 'network'), (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data() as NetworkConfig;
-        setNetworkConfig(data);
-        
-        // Sync i18n language with database preference
-        if (data.language && i18n.language !== data.language) {
-          i18n.changeLanguage(data.language);
-        }
+    // 1. Subscribe to branches
+    const unsubBranches = firebaseUtils.subscribeToCollection<Branch>('branches', [], async (data) => {
+      if (data.length === 0) {
+        setLoading(false);
+        return;
+      }
+      setBranches(data);
+      const main = data.find(b => b.isMain) || data[0];
+      if (!activeBranchId || !data.some(b => b.id === activeBranchId)) {
+        setActiveBranchId(main.id);
+        localStorage.setItem('activeBranchId', main.id);
       }
       setLoading(false);
     });
 
-    // Listen to branches
-    const branchesUnsubscribe = onSnapshot(collection(db, 'branches'), (snapshot) => {
-      const branchesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Branch));
-      setBranches(branchesData);
-      
-      // Auto-select main branch if nothing active
-      if (!activeBranch && branchesData.length > 0) {
-        const main = branchesData.find(b => b.isMain);
-        setActiveBranch(main ? main.id : branchesData[0].id);
+    // 2. Fetch network config
+    const fetchConfig = async () => {
+      const config = await firebaseUtils.getDocument<NetworkConfig>('settings', 'network');
+      if (config) {
+        setNetworkConfig(config);
+        if (config.language) {
+          i18n.changeLanguage(config.language);
+        }
+      } else {
+        await firebaseUtils.setDocument('settings', 'network', DEFAULT_CONFIG);
       }
-    });
-
-    return () => {
-      configUnsubscribe();
-      branchesUnsubscribe();
     };
-  }, [i18n, activeBranch]);
+
+    fetchConfig();
+    return () => { unsubBranches(); };
+  }, [activeBranchId]);
+
+  const activeBranch = branches.find(b => b.id === activeBranchId) || null;
+
+  const handleSetActiveBranchId = (id: string) => {
+    setActiveBranchId(id);
+    localStorage.setItem('activeBranchId', id);
+  };
+
+  const updateNetworkConfig = async (config: Partial<NetworkConfig>) => {
+    const newConfig = { ...networkConfig, ...config };
+    await firebaseUtils.setDocument('settings', 'network', newConfig);
+    setNetworkConfig(newConfig);
+  };
 
   return (
-    <LocationContext.Provider value={{ branches, networkConfig, activeBranch, setActiveBranch, loading }}>
+    <LocationContext.Provider value={{ 
+      branches, 
+      activeBranchId, 
+      activeBranch,
+      setActiveBranchId: handleSetActiveBranchId, 
+      networkConfig,
+      updateNetworkConfig,
+      loading 
+    }}>
       {children}
     </LocationContext.Provider>
   );

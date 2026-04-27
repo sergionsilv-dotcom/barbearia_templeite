@@ -1,33 +1,30 @@
-import React, { useState } from 'react';
-import { Button } from '../components/ui/button';
-import { Scissors, Star, Instagram, Clock, Phone, MapPin, ChevronRight, Play, CheckCircle2, Award, Zap, Users, MessageSquare } from 'lucide-react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router-dom';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocationContext } from '../LocationContext';
+import { motion } from 'motion/react';
+import { Button } from '../components/ui/button';
+import { Scissors, CheckCircle2, Clock, Instagram, Star, MapPin, Phone } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
   const { t } = useTranslation();
   const { networkConfig } = useLocationContext();
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   return (
-    <div className="bg-black text-white">
+    <div className="overflow-hidden">
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        {/* Background Overlay with Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black z-10" />
-        
-        {/* Background Image/Video Placeholder */}
-        <div className="absolute inset-0 grayscale opacity-40">
-           <img 
-            src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80" 
+      <section className="relative h-[90vh] flex items-center justify-center">
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=2070" 
             alt="Barbershop" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover opacity-60"
+            referrerPolicy="no-referrer"
           />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/30 to-[#0a0a0a]" />
         </div>
 
-        <div className="relative z-20 container mx-auto px-4 text-center">
+        <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -37,20 +34,22 @@ export const Home: React.FC = () => {
               {t('home.hero_subtitle')}
             </span>
               <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tighter uppercase leading-[0.9]">
-                {networkConfig.name.split(' ').map((word, i) => (
-                  <span key={i} className={i % 2 !== 0 ? 'text-amber-500 block' : 'block'}>{word}</span>
+                {(networkConfig.name || 'Barber Pro').split(' ').map((word, i, arr) => (
+                  <span key={i} className={i === arr.length - 1 ? "text-amber-500 block" : "block"}>
+                    {word}
+                  </span>
                 ))}
               </h1>
-              <p className="text-lg md:text-xl text-gray-400 mb-8 max-w-xl font-medium leading-relaxed mx-auto">
-                {networkConfig.slogan}. {t('home.hero_cta_text')}
+              <p className="text-lg md:text-xl text-gray-400 mb-8 max-w-xl mx-auto font-medium leading-relaxed">
+                {networkConfig.slogan || 'Your premium grooming destination.'}. {t('home.hero_cta_text')}
               </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/agendar">
+              <Link to="/agendar" className="w-full sm:w-auto">
                 <Button className="bg-amber-600 hover:bg-amber-700 text-white px-10 py-8 rounded-none uppercase tracking-widest text-sm font-bold w-full sm:w-auto">
                   {t('home.book_now')}
                 </Button>
               </Link>
-              <Link to="/galeria">
+              <Link to="/galeria" className="w-full sm:w-auto">
                 <Button variant="outline" className="border-white/20 hover:bg-white/10 text-white px-10 py-8 rounded-none uppercase tracking-widest text-sm font-bold w-full sm:w-auto">
                   {t('home.view_gallery')}
                 </Button>
@@ -60,8 +59,8 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-32 bg-black border-y border-white/5">
+      {/* Features */}
+      <section className="py-24 bg-[#0a0a0a] border-y border-white/5">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
@@ -73,21 +72,22 @@ export const Home: React.FC = () => {
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group p-8 border border-white/10 hover:border-amber-500/50 transition-all bg-white/[0.02]"
+                transition={{ delay: i * 0.2 }}
+                className="text-center group"
               >
-                <feature.icon className="h-10 w-10 text-amber-500 mb-6 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold uppercase tracking-widest mb-4 italic">{feature.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{feature.desc}</p>
+                <div className="w-16 h-16 bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-6 group-hover:border-amber-500 transition-colors">
+                  <feature.icon className="h-8 w-8 text-amber-500" />
+                </div>
+                <h3 className="text-xl font-bold uppercase tracking-widest mb-4">{feature.title}</h3>
+                <p className="text-gray-500 font-light">{feature.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Services Menu */}
-      <section className="py-32 bg-black">
+      {/* Services Preview */}
+      <section className="py-24 bg-black">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-8">
             <div>
@@ -99,7 +99,7 @@ export const Home: React.FC = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-px bg-white/5 border border-white/5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
               { name: t('services.social_cut'), price: t('services.social_cut_price'), time: t('services.social_cut_time') },
               { name: t('services.beard'), price: t('services.beard_price'), time: t('services.beard_time') },
@@ -108,29 +108,27 @@ export const Home: React.FC = () => {
             ].map((service, i) => (
               <div key={i} className="flex justify-between items-center p-8 border border-white/5 hover:border-white/20 transition-colors bg-white/[0.02]">
                 <div>
-                  <h3 className="text-lg font-bold uppercase tracking-widest mb-1 italic">{service.name}</h3>
-                  <p className="text-xs text-gray-500 uppercase tracking-tighter flex items-center">
-                    <Clock className="h-3 w-3 mr-2" /> {service.time}
-                  </p>
+                  <h4 className="text-xl font-bold uppercase tracking-widest mb-1">{service.name}</h4>
+                  <span className="text-gray-500 text-xs uppercase tracking-widest">{service.time}</span>
                 </div>
-                <div className="text-2xl font-black italic text-amber-500">{service.price}</div>
+                <div className="text-2xl font-black text-amber-500 italic">{service.price}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Instagram Feed Section */}
-      <section className="py-32 bg-white/[0.02]">
+      {/* Instagram Integration */}
+      <section className="py-24 bg-[#0a0a0a]">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <Instagram className="h-10 w-10 text-amber-500 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold uppercase tracking-widest mb-2">{t('home.follow_us')} @{networkConfig.instagram}</h2>
+            <h2 className="text-3xl font-bold uppercase tracking-widest mb-2">{t('home.follow_us')} @{networkConfig.instagram || 'barbershop'}</h2>
             <p className="text-gray-400 mb-8 uppercase tracking-tighter font-medium italic">{t('home.instagram_desc')}</p>
             <Button 
               size="lg" 
               onClick={() => window.open(`https://instagram.com/${networkConfig.instagram}`, '_blank')}
-              className="bg-white text-black hover:bg-gray-200 px-8 rounded-none uppercase tracking-widest font-bold"
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-none uppercase tracking-widest font-black italic shadow-lg shadow-purple-500/20"
             >
               <Instagram className="h-5 w-5 mr-2" />
               {t('home.view_instagram')}
@@ -138,15 +136,23 @@ export const Home: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="aspect-square bg-white/5 grayscale hover:grayscale-0 transition-all cursor-pointer relative group overflow-hidden">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="aspect-square bg-white/5 overflow-hidden group relative">
                 <img 
-                  src={`https://images.unsplash.com/photo-1585747860715-2ba37e788b70?auto=format&fit=crop&q=80&w=400&h=400&sig=${i}`} 
-                  alt="Style" 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  src={`https://picsum.photos/seed/barber${n}/600/600`} 
+                  alt="Gallery" 
+                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                  referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-amber-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Instagram className="h-8 w-8 text-white" />
+                  <a 
+                    href={`https://instagram.com/${networkConfig.instagram}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-6 py-3 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors uppercase tracking-widest text-xs font-bold"
+                  >
+                    <Instagram className="h-3 w-3 mr-2" /> @{networkConfig.instagram || 'barbershop'}
+                  </a>
                 </div>
               </div>
             ))}
@@ -154,12 +160,12 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-32 bg-black border-y border-white/5">
+      {/* Reviews Section */}
+      <section className="py-24 bg-black border-t border-white/5">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-20">
+          <div className="text-center mb-16">
             <div className="flex justify-center space-x-1 mb-4">
-              {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="h-5 w-5 text-amber-500 fill-amber-500" />)}
+              {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="h-4 w-4 text-amber-500 fill-amber-500" />)}
             </div>
             <h2 className="text-3xl font-bold uppercase tracking-widest mb-2">{t('home.reviews_title')}</h2>
             <p className="text-gray-500">{t('home.reviews_subtitle')}</p>
@@ -173,9 +179,9 @@ export const Home: React.FC = () => {
             ].map((review, i) => (
               <motion.div 
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1 }}
                 className="p-8 bg-white/[0.02] border border-white/10 relative"
               >
                 <div className="absolute -top-4 left-8 bg-amber-500 text-black px-3 py-1 text-[10px] font-black uppercase tracking-widest">
@@ -183,13 +189,13 @@ export const Home: React.FC = () => {
                 </div>
                 <p className="text-gray-400 italic mb-6 font-light leading-relaxed">"{review.text}"</p>
                 <div className="flex items-center space-x-4">
-                  <div className="h-10 w-10 bg-white/5 rounded-full flex items-center justify-center text-[10px] font-bold text-amber-500 border border-amber-500/20">
-                    {review.name.charAt(0)}
+                  <div className="h-10 w-10 bg-amber-500/20 rounded-full flex items-center justify-center text-amber-500 font-bold">
+                    {review.name[0]}
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold uppercase tracking-widest">{review.name}</h4>
-                    <div className="flex space-x-1">
-                      {[...Array(review.rating)].map((_, i) => <Star key={i} className="h-2 w-2 text-amber-500 fill-amber-500" />)}
+                    <p className="font-bold uppercase tracking-widest text-xs">{review.name}</p>
+                    <div className="flex space-x-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => <Star key={s} className="h-2 w-2 text-amber-500 fill-amber-500" />)}
                     </div>
                   </div>
                 </div>
@@ -199,8 +205,8 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Info & Map Section */}
-      <section className="py-32 bg-black">
+      {/* Info & Location */}
+      <section className="py-24 bg-black">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
@@ -211,39 +217,41 @@ export const Home: React.FC = () => {
                     <MapPin className="h-6 w-6 text-amber-500 shrink-0" />
                     <div>
                       <p className="font-bold uppercase tracking-widest text-sm">{t('common.address')}</p>
-                      <p className="text-gray-400">3395 Church St, Vancouver, BC - V5R 4W7</p>
+                      <p className="text-gray-400">Your Address Street, City, State - Zip</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-4">
                     <Phone className="h-6 w-6 text-amber-500 shrink-0" />
                     <div>
                       <p className="font-bold uppercase tracking-widest text-sm">{t('common.contact')}</p>
-                      <p className="text-gray-400">+1 (236) 512-8846</p>
+                      <p className="text-gray-400">{networkConfig.phone || '+0 (000) 000-0000'}</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-4">
                     <Clock className="h-6 w-6 text-amber-500 shrink-0" />
                     <div>
                       <p className="font-bold uppercase tracking-widest text-sm">{t('common.hours')}</p>
-                      <p className="text-gray-400">{t('home.working_hours')}<br /><span className="text-[10px] opacity-50 uppercase tracking-tighter">Pacific Time</span></p>
+                      <p className="text-gray-400">{t('home.working_hours')}</p>
                     </div>
                   </div>
                 </div>
               </div>
               <Button 
-                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('3395 Church St, Vancouver, BC V5R 4W7')}`, '_blank')}
                 className="bg-white text-black hover:bg-gray-200 px-8 rounded-none uppercase tracking-widest font-bold"
               >
                 {t('home.open_maps')}
               </Button>
             </div>
             <div className="h-[400px] bg-white/5 border border-white/10 relative overflow-hidden">
-               <img 
-                src="https://images.unsplash.com/photo-1516975080664-ed2fc6a32937?auto=format&fit=crop&q=80" 
-                alt="Interier" 
-                className="w-full h-full object-cover grayscale"
+              <div className="absolute inset-0 flex items-center justify-center text-gray-600 uppercase tracking-[0.5em] text-xs">
+                Interactive Map
+              </div>
+              <img 
+                src="https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&q=80&w=2066" 
+                alt="Map Placeholder" 
+                className="w-full h-full object-cover opacity-20"
+                referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-amber-500/10 mix-blend-overlay" />
             </div>
           </div>
         </div>

@@ -2,16 +2,18 @@ import React from 'react';
 import { Instagram, Camera, ExternalLink, Scissors } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLocationContext } from '../LocationContext';
+import { useTranslation } from 'react-i18next';
 
 export const Gallery: React.FC = () => {
+  const { t } = useTranslation();
   const { networkConfig } = useLocationContext();
   const photos = [
-    { url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=2070', title: 'Corte Moderno' },
-    { url: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=2070', title: 'Barba Alinhada' },
-    { url: 'https://images.unsplash.com/photo-1512690196252-741d2fd36ad0?auto=format&fit=crop&q=80&w=2070', title: 'Estilo Premium' },
-    { url: 'https://images.unsplash.com/photo-1599351473219-283ad6afbc0c?auto=format&fit=crop&q=80&w=2070', title: 'Degradê Navalhado' },
-    { url: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=2070', title: 'Corte Clássico' },
-    { url: 'https://images.unsplash.com/photo-1501691223387-dd050040aa39?auto=format&fit=crop&q=80&w=2070', title: 'Aparência Impecável' },
+    { url: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=2070', title: t('services.social_cut') },
+    { url: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=2070', title: t('services.beard') },
+    { url: 'https://images.unsplash.com/photo-1512690196252-741d2fd36ad0?auto=format&fit=crop&q=80&w=2070', title: 'Service Style' },
+    { url: 'https://images.unsplash.com/photo-1599351473219-283ad6afbc0c?auto=format&fit=crop&q=80&w=2070', title: 'Fade Cut' },
+    { url: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=2070', title: 'Classic Cut' },
+    { url: 'https://images.unsplash.com/photo-1501691223387-dd050040aa39?auto=format&fit=crop&q=80&w=2070', title: 'Hair Design' },
   ];
 
   return (
@@ -26,18 +28,18 @@ export const Gallery: React.FC = () => {
             <Camera className="h-8 w-8 text-amber-500" />
           </motion.div>
           <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter mb-4 italic">
-            Nossa <span className="text-amber-500">Galeria</span>
+            {t('nav.gallery').split(' ')[0]} <span className="text-amber-500">{t('nav.gallery').split(' ')[1] || ''}</span>
           </h1>
           <p className="text-gray-400 uppercase tracking-[0.3em] text-xs font-bold mb-8">
             Estilo • Atitude • Tradição
           </p>
           <a 
-            href={`https://instagram.com/${networkConfig.instagram}`} 
+            href={`https://instagram.com/${networkConfig.instagram || 'barbershop'}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="inline-flex items-center px-6 py-3 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors uppercase tracking-widest text-xs font-bold"
           >
-            <Instagram className="h-3 w-3 mr-2" /> @{networkConfig.instagram}
+            <Instagram className="h-3 w-3 mr-2" /> @{networkConfig.instagram || 'barbershop'}
           </a>
         </div>
 
@@ -59,7 +61,7 @@ export const Gallery: React.FC = () => {
                 <Scissors className="h-8 w-8 text-amber-500 mb-4 transform -rotate-45" />
                 <h3 className="text-xl font-bold uppercase tracking-widest mb-2 italic">{photo.title}</h3>
                 <div className="flex items-center text-xs text-gray-400 uppercase tracking-widest">
-                  <ExternalLink className="h-3 w-3 mr-2" /> Ampliar imagem
+                  <ExternalLink className="h-3 w-3 mr-2" /> {t('home.view_gallery')}
                 </div>
               </div>
             </motion.div>

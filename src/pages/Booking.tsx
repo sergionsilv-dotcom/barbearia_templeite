@@ -13,14 +13,12 @@ import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../lib/currency';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { Clock, CheckCircle2 } from 'lucide-react';
+import { Clock, CheckCircle2, Store, Building2, MapPin as Pin } from 'lucide-react';
 import { PhoneInput } from '../components/ui/phone-input';
 import { useLocationContext } from '../LocationContext';
-import { Store, Building2, MapPin as Pin } from 'lucide-react';
-
 
 export const Booking: React.FC = () => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { branches, networkConfig } = useLocationContext();
 
   const getDateLocale = () => {
@@ -34,7 +32,6 @@ export const Booking: React.FC = () => {
 
   const currencyCode = networkConfig.currency || 'BRL';
   const locale = networkConfig.language || 'pt-BR';
-
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [services, setServices] = useState<Service[]>([]);
   const [barbers, setBarbers] = useState<Barber[]>([]);
@@ -45,7 +42,7 @@ export const Booking: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [step, setStep] = useState(0); // Start at Step 0: Branch Selection
+  const [step, setStep] = useState(0); 
   const [paymentMethod, setPaymentMethod] = useState<'pix' | 'card' | 'local'>('local');
   const [loading, setLoading] = useState(false);
 
@@ -56,9 +53,6 @@ export const Booking: React.FC = () => {
       const s = await firebaseUtils.getCollection<Service>('services', []);
       const b = await firebaseUtils.getCollection<Barber>('users', []);
       
-      const mainBranchId = branches.find(br => br.isMain)?.id;
-
-      // Filter by branch with backward compatibility (null or matching)
       setServices(s.filter(service => 
         !selectedBranch || 
         service.locationId === selectedBranch || 
@@ -70,9 +64,8 @@ export const Booking: React.FC = () => {
       ));
     };
     fetchData();
-  }, [selectedBranch, branches]);
+  }, [selectedBranch, step]);
 
-  // Handle single branch auto-select
   useEffect(() => {
     if (branches.length === 1 && !selectedBranch) {
       setSelectedBranch(branches[0].id);
@@ -80,20 +73,16 @@ export const Booking: React.FC = () => {
     }
   }, [branches, selectedBranch]);
 
-  // Auto-fill client data if phone exists
   useEffect(() => {
     const lookupClient = async () => {
       if (customerPhone.length >= 10) {
         try {
           const q = query(collection(db, 'clients'), where('phone', '==', customerPhone));
           const snap = await getDocs(q);
-          
           if (!snap.empty) {
             const clientData = snap.docs[0].data() as Client;
-            
             if (!customerName) setCustomerName(clientData.name);
             if (!customerEmail) setCustomerEmail(clientData.email);
-            
             toast.success(t('appointments.welcome_back'));
           }
         } catch (err) {
@@ -101,7 +90,6 @@ export const Booking: React.FC = () => {
         }
       }
     };
-
     const debounceTimer = setTimeout(lookupClient, 1000);
     return () => clearTimeout(debounceTimer);
   }, [customerPhone, customerName, customerEmail, t]);
@@ -110,28 +98,9 @@ export const Booking: React.FC = () => {
     '10:00', '10:45', '11:30', '12:15', '13:00', '13:45', '14:30', '15:15', '16:00', '16:45', '17:30', '18:15'
   ];
 
-  const autoRegisterClient = async () => {
-    if (!customerPhone) return;
-    try {
-      const q = query(collection(db, 'clients'), where('phone', '==', customerPhone));
-      const snap = await getDocs(q);
-      if (snap.empty) {
-        const newClient: Omit<Client, 'id'> = {
-          name: customerName,
-          phone: customerPhone,
-          email: customerEmail,
-          createdAt: new Date().toISOString(),
-        };
-        await firebaseUtils.addDocument('clients', newClient);
-      }
-    } catch {
-      // Non-critical
-    }
-  };
-
   const handleBooking = async () => {
     if (!selectedService || !selectedBarber || !selectedDate || !selectedTime || !customerName) {
-      toast.error('Por favor, preencha todos os campos.');
+      toast.error(t('common.error'));
       return;
     }
 
@@ -154,7 +123,6 @@ export const Booking: React.FC = () => {
       };
 
       await firebaseUtils.addDocument('appointments', newAppointment);
-      await autoRegisterClient();
       setStep(5);
       toast.success(t('appointments.success'));
     } catch (error) {
@@ -248,7 +216,7 @@ export const Booking: React.FC = () => {
                         onClick={() => window.open(`https://wa.me/${networkConfig.phone || ''}`, '_blank')}
                         className="rounded-none border-amber-500/50 text-amber-500 hover:bg-amber-500/10 text-[10px] uppercase tracking-widest"
                       >
-                         {t('common.contact')} WhatsApp
+                        {t('common.contact')} WhatsApp
                       </Button>
                     </div>
                   ) : (
@@ -406,9 +374,7 @@ export const Booking: React.FC = () => {
                   placeholder={t('clients.phone_placeholder')}
                 />
               </div>
-
             </div>
-
             <div className="flex justify-between items-center">
               <Button variant="ghost" onClick={() => setStep(2)} className="uppercase tracking-widest text-xs">{t('common.back')}</Button>
               <Button 
@@ -435,7 +401,6 @@ export const Booking: React.FC = () => {
               <div className="grid gap-4">
                 {[
                   { id: 'local', name: t('financial.pay_local'), desc: t('financial.pay_local_desc') },
-                  { id: 'interac', name: 'Interac e-Transfer', desc: 'Transferência instantânea' },
                   { id: 'card', name: t('financial.pay_online'), desc: t('financial.pay_online_desc') }
                 ].map((method) => (
                   <div 

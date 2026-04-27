@@ -30,11 +30,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isPro, setIsPro] = useState(false);
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
 
-  const isDeveloper = user?.email === 'sergionsilv@gmail.com';
+  // Generalize developer check using environment variable
+  const developerEmail = import.meta.env.VITE_DEVELOPER_EMAIL;
+  const isDeveloper = user?.email === developerEmail && !!developerEmail;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // 1. Fetch license info and trial status (Universal - for everyone)
+      // 1. Fetch license info and trial status
       const sysDocRef = doc(db, 'settings', 'system');
       const sysDoc = await getDoc(sysDocRef);
       
@@ -47,30 +49,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         licenseStatus = data.active !== false;
         proStatus = data.isPro === true;
 
-        // Trial Logic
         if (!proStatus) {
           let trialStart = data.trialStartedAt;
-          
-          // Auto-initialize trial if not present
           if (!trialStart) {
             trialStart = new Date().toISOString();
             await setDoc(sysDocRef, { ...data, trialStartedAt: trialStart }, { merge: true });
           }
-
           const startDate = new Date(trialStart);
           const now = new Date();
           const diffTime = now.getTime() - startDate.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          
           daysLeft = Math.max(0, 30 - diffDays);
-          
-          // Block if expired and not pro
-          if (daysLeft <= 0) {
-            licenseStatus = false;
-          }
+          if (daysLeft <= 0) licenseStatus = false;
         }
       } else {
-        // Initialize fresh system settings if missing
         const trialStart = new Date().toISOString();
         await setDoc(sysDocRef, { active: true, isPro: false, trialStartedAt: trialStart });
         daysLeft = 30;
@@ -86,7 +78,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const userData = docSnap.data() as Barber;
-          // Ensure admin has all permissions
           if (userData.role === 'admin') {
             userData.permissions = [
               'view_calendar',
@@ -100,18 +91,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           setProfile(userData);
         } else {
-          // === EMAIL LINKING ===
-          // Check if a manually-created professional profile exists with this email
+          // EMAIL LINKING
           const emailQuery = query(collection(db, 'users'), where('email', '==', user.email));
           const emailResult = await getDocs(emailQuery);
 
           if (!emailResult.empty) {
-            // Found a manually-created pro profile — migrate it to the real Firebase UID
             const oldDoc = emailResult.docs[0];
             const oldId = oldDoc.id;
             const oldData = oldDoc.data() as Barber;
-
-            // Write to new UID
             const newProfile: Barber = {
               ...oldData,
               uid: user.uid,
@@ -119,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             await setDoc(doc(db, 'users', user.uid), newProfile);
 
-            // Migrate appointments barberId from oldId to new UID
+            // Migrate data
             const aptsQuery = query(collection(db, 'appointments'), where('barberId', '==', oldId));
             const aptsSnap = await getDocs(aptsQuery);
             if (!aptsSnap.empty) {
@@ -128,7 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await batch.commit();
             }
 
-            // Migrate sales/transactions
             const salesQuery = query(collection(db, 'sales'), where('barberId', '==', oldId));
             const salesSnap = await getDocs(salesQuery);
             if (!salesSnap.empty) {
@@ -139,11 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             setProfile(newProfile);
           } else {
-            // Brand new user — create default profile
-            const isFirstAdmin = user.email === import.meta.env.VITE_DEVELOPER_EMAIL;
+            // First time user logic
+            const isFirstAdmin = user.email === developerEmail;
             const newProfile: Barber = {
               uid: user.uid,
-              name: user.displayName || 'Anonymous',
+              name: user.displayName || 'User',
               photoURL: user.photoURL || '',
               role: isFirstAdmin ? 'admin' : 'barber',
               permissions: isFirstAdmin ? [
@@ -167,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [developerEmail]);
 
   const signIn = async () => {
     try {
@@ -175,7 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signInWithPopup(auth, provider);
     } catch (error: any) {
       console.error('Auth Error:', error);
-      alert('Erro ao entrar: ' + (error.message || 'Verifique sua conexão'));
+      alert('Error: ' + (error.message || 'Check connection'));
     }
   };
 

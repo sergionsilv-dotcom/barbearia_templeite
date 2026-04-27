@@ -9,19 +9,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { toast } from 'sonner';
 import { 
-  Receipt, Plus, Filter, Calendar as CalendarIcon, 
-  Wallet, FileText, Trash2, Tag, TrendingUp, 
+  Receipt, Plus, 
+  Wallet, Trash2, Tag, TrendingUp, 
   TrendingDown, History, PieChart, ArrowDownRight, 
   ArrowUpRight, CheckCircle2, Clock, Pencil
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Badge } from '../ui/badge';
-
 import { useLocationContext } from '../../LocationContext';
+import { useTranslation } from 'react-i18next';
+import { formatCurrency } from '../../lib/currency';
+import * as locales from 'date-fns/locale';
 
 export const ExpensesTab: React.FC = () => {
-  const { activeBranchId, activeBranch } = useLocationContext();
+  const { t, i18n } = useTranslation();
+  const { activeBranchId, activeBranch, networkConfig } = useLocationContext();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,11 @@ export const ExpensesTab: React.FC = () => {
   const [isEditExpenseOpen, setIsEditExpenseOpen] = useState(false);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
+  const currencyCode = networkConfig.currency || 'BRL';
+  const localeStr = networkConfig.language || 'pt-BR';
+  // Dynamic date locale
+  const dateLocale = (locales as any)[localeStr.replace('-', '')] || (locales as any)[localeStr.split('-')[0]] || locales.ptBR;
 
   // Form states
   const [newExpense, setNewExpense] = useState({
@@ -55,14 +62,13 @@ export const ExpensesTab: React.FC = () => {
     
     const unsubCat = firebaseUtils.subscribeToCollection<ExpenseCategory>('expenseCategories', [], (data) => {
       const defaultCategories = [
-        { id: 'purchase', name: 'Compra de Produtos' },
-        { id: 'rent', name: 'Aluguel' },
-        { id: 'utilities', name: 'Energia / Água' },
-        { id: 'marketing', name: 'Marketing / Anúncios' },
-        { id: 'maintenance', name: 'Manutenção da Loja' }
+        { id: 'purchase', name: t('expenses.cat_purchase') || 'Compra de Produtos' },
+        { id: 'rent', name: t('expenses.cat_rent') || 'Aluguel' },
+        { id: 'utilities', name: t('expenses.cat_utilities') || 'Energia / Água' },
+        { id: 'marketing', name: t('expenses.cat_marketing') || 'Marketing / Anúncios' },
+        { id: 'maintenance', name: t('expenses.cat_maintenance') || 'Manutenção da Loja' }
       ];
 
-      // Merge defaults with user categories, avoiding duplicates
       const merged = [...data];
       defaultCategories.forEach(def => {
         if (!merged.find(c => c.id === def.id || c.name === def.name)) {
@@ -75,11 +81,11 @@ export const ExpensesTab: React.FC = () => {
     });
 
     return () => { unsubExp(); unsubCat(); };
-  }, [activeBranchId, activeBranch]);
+  }, [activeBranchId, activeBranch, t]);
 
   const handleAddExpense = async () => {
     if (newExpense.amount <= 0 || !newExpense.categoryId) {
-      toast.error('Preencha os campos obrigatórios.');
+      toast.error(t('expenses.required'));
       return;
     }
 
@@ -88,12 +94,12 @@ export const ExpensesTab: React.FC = () => {
     try {
       await firebaseUtils.addDocument('expenses', {
         ...newExpense,
-        categoryName: category?.name || 'Geral',
+        categoryName: category?.name || t('expenses.cat_global'),
         locationId: activeBranchId === 'all' ? '' : activeBranchId,
         date: new Date(newExpense.date).toISOString(),
         createdAt: new Date().toISOString()
       });
-      toast.success('Despesa lançada com sucesso!');
+      toast.success(t('expenses.success_create_exp'));
       setIsAddExpenseOpen(false);
       setNewExpense({ 
         amount: 0, 
@@ -105,7 +111,7 @@ export const ExpensesTab: React.FC = () => {
         date: new Date().toISOString().split('T')[0] 
       });
     } catch {
-      toast.error('Erro ao lançar despesa.');
+      toast.error(t('expenses.error_create_exp'));
     }
   };
 
@@ -113,17 +119,17 @@ export const ExpensesTab: React.FC = () => {
     if (!newCategory.name) return;
     try {
       await firebaseUtils.addDocument('expenseCategories', newCategory);
-      toast.success('Categoria adicionada!');
+      toast.success(t('expenses.success_create_cat'));
       setIsAddCategoryOpen(false);
       setNewCategory({ name: '' });
     } catch {
-      toast.error('Erro ao adicionar categoria.');
+      toast.error(t('expenses.error_create_cat'));
     }
   };
 
   const handleUpdateExpense = async () => {
     if (!editingExpense || editingExpense.amount <= 0 || !editingExpense.categoryId) {
-      toast.error('Preencha os campos obrigatórios.');
+      toast.error(t('expenses.required'));
       return;
     }
 
@@ -132,96 +138,77 @@ export const ExpensesTab: React.FC = () => {
     try {
       await firebaseUtils.updateDocument('expenses', editingExpense.id, {
         ...editingExpense,
-        categoryName: category?.name || 'Geral',
+        categoryName: category?.name || t('expenses.cat_global'),
         date: new Date(editingExpense.date).toISOString()
       });
-      toast.success('Lançamento atualizado!');
+      toast.success(t('expenses.success_update'));
       setIsEditExpenseOpen(false);
       setEditingExpense(null);
     } catch {
-      toast.error('Erro ao atualizar lançamento.');
+      toast.error(t('expenses.error_update'));
     }
   };
 
-  // Auto-correction logic for "Aluguel"
-  useEffect(() => {
-    if (newExpense.description.toLowerCase().includes('aluguel')) {
-      const rentCat = categories.find(c => c.name.toLowerCase().includes('aluguel'));
-      if (rentCat) {
-        setNewExpense(prev => ({ ...prev, categoryId: rentCat.id, type: 'expense' }));
-      }
-    }
-  }, [newExpense.description, categories]);
-
-  useEffect(() => {
-    if (editingExpense && editingExpense.description.toLowerCase().includes('aluguel')) {
-      const rentCat = categories.find(c => c.name.toLowerCase().includes('aluguel'));
-      if (rentCat) {
-        setEditingExpense(prev => prev ? ({ ...prev, categoryId: rentCat.id, type: 'expense' }) : null);
-      }
-    }
-  }, [editingExpense?.description, categories]);
-
   const deleteExpense = async (id: string) => {
-    if (!confirm('Deseja excluir esta despesa?')) return;
+    if (!confirm(t('expenses.delete_confirm'))) return;
     try {
       await firebaseUtils.deleteDocument('expenses', id);
-      toast.success('Despesa excluída.');
+      toast.success(t('expenses.success_delete'));
     } catch {
-      toast.error('Erro ao excluir.');
+      toast.error(t('expenses.error_delete'));
     }
   };
 
   const currentMonth = new Date().getMonth();
   const currentMonthExpenses = expenses
     .filter(e => {
-      const isActuallyRent = e.description.toLowerCase().includes('aluguel');
+      const isActuallyRent = e.description.toLowerCase().includes(t('expenses.cat_rent').toLowerCase());
       return new Date(e.date).getMonth() === currentMonth && (e.type === 'expense' || !e.type || isActuallyRent);
     })
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const currentMonthIncome = expenses
     .filter(e => {
-      const isActuallyRent = e.description.toLowerCase().includes('aluguel');
+      const isActuallyRent = e.description.toLowerCase().includes(t('expenses.cat_rent').toLowerCase());
       return new Date(e.date).getMonth() === currentMonth && e.type === 'income' && !isActuallyRent;
     })
     .reduce((acc, curr) => acc + curr.amount, 0);
 
   const monthlyBalance = currentMonthIncome - currentMonthExpenses;
 
-  if (loading) return <div className="text-center py-10 text-xs uppercase tracking-widest font-bold text-amber-500 animate-pulse">Carregando financeiro...</div>;
+  if (loading) return <div className="text-center py-10 text-xs uppercase tracking-widest font-bold text-amber-500 animate-pulse">{t('expenses.loading')}</div>;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-white/[0.02] border-white/10 rounded-none border-t-red-500/50">
-          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-[10px] uppercase tracking-widest text-red-500 font-bold">Resumo Despesas</CardTitle>
+          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0 text-white">
+            <CardTitle className="text-[10px] uppercase tracking-widest text-red-500 font-bold">{t('expenses.summary_expenses')}</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500/20" />
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0">
-            <div className="text-2xl font-black italic text-red-500">- R$ {currentMonthExpenses.toFixed(2)}</div>
+            <div className="text-2xl font-black italic text-red-500">- {formatCurrency(currentMonthExpenses, currencyCode, localeStr)}</div>
           </CardContent>
         </Card>
         
         <Card className="bg-white/[0.02] border-white/10 rounded-none border-t-green-500/50">
-          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-[10px] uppercase tracking-widest text-green-500 font-bold">Resumo Receitas</CardTitle>
+          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0 text-white">
+            <CardTitle className="text-[10px] uppercase tracking-widest text-green-500 font-bold">{t('expenses.summary_income')}</CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500/20" />
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0">
-            <div className="text-2xl font-black italic text-green-500">+ R$ {currentMonthIncome.toFixed(2)}</div>
+            <div className="text-2xl font-black italic text-green-500">+ {formatCurrency(currentMonthIncome, currencyCode, localeStr)}</div>
           </CardContent>
         </Card>
 
         <Card className="bg-white/[0.02] border-white/10 rounded-none border-t-blue-500/50">
-          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-[10px] uppercase tracking-widest text-blue-500 font-bold">Saldo Mensal</CardTitle>
+          <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0 text-white">
+            <CardTitle className="text-[10px] uppercase tracking-widest text-blue-500 font-bold">{t('expenses.monthly_balance')}</CardTitle>
             <Wallet className="h-4 w-4 text-blue-500/20" />
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0">
             <div className={`text-2xl font-black italic ${monthlyBalance >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
-              {monthlyBalance >= 0 ? '+' : '-'} R$ {Math.abs(monthlyBalance).toFixed(2)}
+              {monthlyBalance >= 0 ? '+' : '-'} {formatCurrency(Math.abs(monthlyBalance), currencyCode, localeStr)}
             </div>
           </CardContent>
         </Card>
@@ -237,7 +224,7 @@ export const ExpensesTab: React.FC = () => {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            <PieChart className="h-3 w-3" /> Dashboard
+            <PieChart className="h-3 w-3" /> {t('expenses.subtab_dashboard')}
           </button>
           <button
             onClick={() => setActiveSubTab('history')}
@@ -247,26 +234,26 @@ export const ExpensesTab: React.FC = () => {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            <History className="h-3 w-3" /> Histórico
+            <History className="h-3 w-3" /> {t('expenses.subtab_history')}
           </button>
         </div>
-        <h2 className="text-2xl font-black uppercase italic tracking-tighter">Fluxo de Caixa / Despesas</h2>
-        <div className="flex gap-2">
+        <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white">{t('expenses.title')}</h2>
+        <div className="flex gap-2 text-white">
            <Dialog open={isAddCategoryOpen} onOpenChange={setIsAddCategoryOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="border-white/10 rounded-none uppercase tracking-widest text-[10px] font-bold h-10">
-                <Tag className="h-4 w-4 mr-2" /> Categorias
+              <Button variant="outline" className="border-white/10 rounded-none uppercase tracking-widest text-[10px] font-bold h-10 bg-transparent">
+                <Tag className="h-4 w-4 mr-2" /> {t('expenses.categories')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-zinc-950 border-white/10 rounded-none">
+            <DialogContent className="bg-zinc-950 border-white/10 rounded-none text-white">
               <DialogHeader>
-                <DialogTitle className="uppercase italic font-black tracking-tighter text-2xl">Nova Categoria</DialogTitle>
+                <DialogTitle className="uppercase italic font-black tracking-tighter text-2xl">{t('expenses.new_category')}</DialogTitle>
               </DialogHeader>
               <div className="py-4 space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Nome da Categoria</Label>
+                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_cat_name')}</Label>
                   <Input 
-                    placeholder="Ex: Aluguel, Luz, Marketing..." 
+                    placeholder={t('expenses.cat_placeholder')} 
                     className="bg-black border-white/10 rounded-none"
                     value={newCategory.name}
                     onChange={e => setNewCategory({ name: e.target.value })}
@@ -274,7 +261,7 @@ export const ExpensesTab: React.FC = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddCategory} className="w-full bg-blue-600 hover:bg-blue-700 rounded-none uppercase font-bold py-6">Adicionar</Button>
+                <Button onClick={handleAddCategory} className="w-full bg-blue-600 hover:bg-blue-700 rounded-none uppercase font-bold py-6">{t('common.save')}</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -282,12 +269,12 @@ export const ExpensesTab: React.FC = () => {
           <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
             <DialogTrigger asChild>
               <Button className="bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest text-[10px] font-bold h-10 px-6">
-                <Plus className="h-4 w-4 mr-2" /> Novo Lançamento
+                <Plus className="h-4 w-4 mr-2" /> {t('expenses.new_entry')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-zinc-950 border-white/10 rounded-none max-w-md">
+            <DialogContent className="bg-zinc-950 border-white/10 rounded-none max-w-md text-white">
               <DialogHeader>
-                <DialogTitle className="uppercase italic font-black tracking-tighter text-2xl">Registrar Gasto</DialogTitle>
+                <DialogTitle className="uppercase italic font-black tracking-tighter text-2xl">{t('expenses.register_expense')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="flex bg-white/5 p-1 rounded-none mb-4">
@@ -298,7 +285,7 @@ export const ExpensesTab: React.FC = () => {
                       newExpense.type === 'expense' ? 'bg-red-600 text-white' : 'text-gray-500'
                     }`}
                   >
-                    Despesa
+                    {t('expenses.type_expense')}
                   </button>
                   <button
                     type="button"
@@ -307,26 +294,26 @@ export const ExpensesTab: React.FC = () => {
                       newExpense.type === 'income' ? 'bg-green-600 text-white' : 'text-gray-500'
                     }`}
                   >
-                    Receita
+                    {t('expenses.type_income')}
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Valor (R$)</Label>
+                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_amount')}</Label>
                   <Input 
                     type="number"
                     className={`bg-black border-white/10 rounded-none font-bold text-lg ${
                       newExpense.type === 'expense' ? 'text-red-500' : 'text-green-500'
                     }`} 
-                    value={newExpense.amount}
+                    value={newExpense.amount || ''}
                     onChange={e => setNewExpense({...newExpense, amount: parseFloat(e.target.value)})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Categoria</Label>
+                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_category')}</Label>
                   <Select onValueChange={val => setNewExpense({...newExpense, categoryId: val})}>
                     <SelectTrigger className="bg-black border-white/10 rounded-none">
-                      <SelectValue placeholder="Selecione a categoria" />
+                      <SelectValue placeholder={t('expenses.form_category_placeholder')} />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10 text-white rounded-none">
                       {categories.map(cat => (
@@ -338,9 +325,9 @@ export const ExpensesTab: React.FC = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Descrição</Label>
+                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_description')}</Label>
                   <Input 
-                    placeholder="Ex: Pagamento referente ao mês de Abril"
+                    placeholder={t('expenses.form_desc_placeholder')}
                     className="bg-black border-white/10 rounded-none"
                     value={newExpense.description}
                     onChange={e => setNewExpense({...newExpense, description: e.target.value})}
@@ -348,7 +335,7 @@ export const ExpensesTab: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Data do Gasto</Label>
+                    <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_date')}</Label>
                     <Input 
                       type="date"
                       className="bg-black border-white/10 rounded-none"
@@ -357,16 +344,16 @@ export const ExpensesTab: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Forma de Pagto.</Label>
+                    <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_payment')}</Label>
                     <Select onValueChange={val => setNewExpense({...newExpense, paymentMethod: val})} defaultValue="interac">
                       <SelectTrigger className="bg-black border-white/10 rounded-none">
-                        <SelectValue placeholder="Selecione" />
+                        <SelectValue placeholder={t('common.back')} />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-white/10 text-white rounded-none">
                         <SelectItem value="interac">INTERAC</SelectItem>
-                        <SelectItem value="cash">Dinheiro</SelectItem>
-                        <SelectItem value="card">Cartão</SelectItem>
-                        <SelectItem value="transfer">Transferência</SelectItem>
+                        <SelectItem value="cash">{t('expenses.pay_cash')}</SelectItem>
+                        <SelectItem value="card">{t('expenses.pay_card')}</SelectItem>
+                        <SelectItem value="transfer">{t('expenses.pay_transfer')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -381,7 +368,7 @@ export const ExpensesTab: React.FC = () => {
                     className="h-4 w-4 bg-black border-white/10 rounded-none accent-amber-600"
                   />
                   <Label htmlFor="recurring" className="text-[10px] uppercase tracking-widest text-gray-400 font-bold cursor-pointer">
-                    Lançamento Recorrente? (Mensal)
+                    {t('expenses.recurring')}
                   </Label>
                 </div>
               </div>
@@ -392,7 +379,7 @@ export const ExpensesTab: React.FC = () => {
                     newExpense.type === 'expense' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
                   } rounded-none uppercase tracking-widest font-bold py-6`}
                 >
-                  Confirmar Lançamento
+                  {t('expenses.confirm_entry')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -401,16 +388,16 @@ export const ExpensesTab: React.FC = () => {
       </div>
 
        {activeSubTab === 'history' ? (
-        <div className="bg-white/[0.02] border border-white/10 rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2">
+        <div className="bg-white/[0.02] border border-white/10 rounded-none overflow-hidden animate-in fade-in slide-in-from-bottom-2 text-white">
           <table className="w-full text-left">
             <thead className="bg-white/5 border-b border-white/10">
               <tr className="text-[10px] uppercase tracking-[0.2em] font-black text-gray-500">
-                <th className="px-6 py-4">Data</th>
-                <th className="px-6 py-4">Categoria</th>
-                {activeBranchId === 'all' && <th className="px-6 py-4">Unidade</th>}
-                <th className="px-6 py-4">Descrição</th>
-                <th className="px-6 py-4">Forma de Pagto.</th>
-                <th className="px-6 py-4 text-right">Valor</th>
+                <th className="px-6 py-4">{t('expenses.col_date')}</th>
+                <th className="px-6 py-4">{t('expenses.col_category')}</th>
+                {activeBranchId === 'all' && <th className="px-6 py-4">{t('expenses.col_unit')}</th>}
+                <th className="px-6 py-4">{t('expenses.col_desc')}</th>
+                <th className="px-6 py-4">{t('expenses.col_payment')}</th>
+                <th className="px-6 py-4 text-right">{t('expenses.col_value')}</th>
                 <th className="px-6 py-4 text-right"></th>
               </tr>
             </thead>
@@ -419,7 +406,7 @@ export const ExpensesTab: React.FC = () => {
                 <tr key={expense.id} className="group hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4">
                     <div className="text-[10px] uppercase font-bold text-gray-400">
-                      {format(new Date(expense.date), "dd/MM/yyyy", { locale: ptBR })}
+                      {format(new Date(expense.date), "dd/MM/yyyy", { locale: dateLocale })}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -443,16 +430,16 @@ export const ExpensesTab: React.FC = () => {
                   <td className="px-6 py-4">
                      <span className="uppercase text-[9px] font-black text-gray-500 px-2 py-1 bg-white/5 border border-white/5">
                       {expense.paymentMethod === 'interac' ? 'INTERAC' : 
-                       expense.paymentMethod === 'cash' ? 'DINHEIRO' : 
-                       expense.paymentMethod === 'card' ? 'CARTÃO' : 'TRANSF.'}
+                       expense.paymentMethod === 'cash' ? t('expenses.pay_cash') : 
+                       expense.paymentMethod === 'card' ? t('expenses.pay_card') : t('expenses.pay_transfer')}
                      </span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex flex-col items-end">
                       <span className={`text-md font-black italic shadow-inner px-2 py-0.5 ${expense.type === 'expense' || !expense.type ? 'text-red-500 bg-red-500/10' : 'text-green-500 bg-green-500/10'}`}>
-                        {(expense.type === 'expense' || !expense.type) ? '-' : '+'} R$ {expense.amount.toFixed(2)}
+                        {(expense.type === 'expense' || !expense.type) ? '-' : '+'} {formatCurrency(expense.amount, currencyCode, localeStr)}
                       </span>
-                      {expense.isRecurring && <span className="text-[8px] text-amber-500 font-bold uppercase tracking-tighter">Recorrente</span>}
+                      {expense.isRecurring && <span className="text-[8px] text-amber-500 font-bold uppercase tracking-tighter">{t('expenses.recurrent_label')}</span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -463,18 +450,14 @@ export const ExpensesTab: React.FC = () => {
                           setIsEditExpenseOpen(true);
                         }}
                         className="flex items-center gap-1 text-amber-500 hover:text-amber-400 font-bold transition-all p-1"
-                        title="Editar"
                       >
                         <Pencil className="h-4 w-4" />
-                        <span className="text-[8px] uppercase tracking-tighter">Editar</span>
                       </button>
                       <button 
                         onClick={() => deleteExpense(expense.id)}
                         className="flex items-center gap-1 text-red-500 hover:text-red-400 font-bold transition-all p-1"
-                        title="Excluir"
                       >
                         <Trash2 className="h-4 w-4" />
-                        <span className="text-[8px] uppercase tracking-tighter">Excluir</span>
                       </button>
                     </div>
                   </td>
@@ -483,7 +466,7 @@ export const ExpensesTab: React.FC = () => {
               {expenses.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500 uppercase tracking-[0.2em] text-[10px] font-bold">
-                    Nenhum lançamento no histórico
+                    {t('expenses.no_history')}
                   </td>
                 </tr>
               )}
@@ -491,19 +474,19 @@ export const ExpensesTab: React.FC = () => {
           </table>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 text-white">
           {/* Summary View Content */}
           <Card className="bg-white/[0.02] border-white/10 rounded-none">
             <CardHeader>
               <CardTitle className="text-xs uppercase tracking-widest text-amber-500 font-bold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" /> Maiores Entradas (Mês)
+                <TrendingUp className="h-4 w-4" /> {t('expenses.top_income')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {expenses
                   .filter(e => {
-                    const isRent = e.description.toLowerCase().includes('aluguel');
+                    const isRent = e.description.toLowerCase().includes(t('expenses.cat_rent').toLowerCase());
                     return e.type === 'income' && !isRent && new Date(e.date).getMonth() === currentMonth;
                   })
                   .sort((a,b) => b.amount - a.amount)
@@ -511,14 +494,14 @@ export const ExpensesTab: React.FC = () => {
                   .map(e => (
                     <div key={e.id} className="flex justify-between items-center border-b border-white/5 pb-2">
                       <span className="text-[10px] uppercase font-bold text-gray-400">{e.description || e.categoryName}</span>
-                      <span className="text-xs font-black text-green-500">+ R$ {e.amount.toFixed(2)}</span>
+                      <span className="text-xs font-black text-green-500">+ {formatCurrency(e.amount, currencyCode, localeStr)}</span>
                     </div>
                   ))}
                 {expenses.filter(e => {
-                    const isRent = e.description.toLowerCase().includes('aluguel');
+                    const isRent = e.description.toLowerCase().includes(t('expenses.cat_rent').toLowerCase());
                     return e.type === 'income' && !isRent && new Date(e.date).getMonth() === currentMonth;
                   }).length === 0 && (
-                  <p className="text-[10px] text-gray-600 uppercase italic">Nenhuma receita este mês</p>
+                  <p className="text-[10px] text-gray-600 uppercase italic">{t('expenses.no_income_month')}</p>
                 )}
               </div>
             </CardContent>
@@ -527,14 +510,14 @@ export const ExpensesTab: React.FC = () => {
           <Card className="bg-white/[0.02] border-white/10 rounded-none">
             <CardHeader>
               <CardTitle className="text-xs uppercase tracking-widest text-red-500 font-bold flex items-center gap-2">
-                <TrendingDown className="h-4 w-4" /> Maiores Gastos (Mês)
+                <TrendingDown className="h-4 w-4" /> {t('expenses.top_expenses')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {expenses
                   .filter(e => {
-                    const isRent = e.description.toLowerCase().includes('aluguel');
+                    const isRent = e.description.toLowerCase().includes(t('expenses.cat_rent').toLowerCase());
                     return (e.type === 'expense' || !e.type || isRent) && new Date(e.date).getMonth() === currentMonth;
                   })
                   .sort((a,b) => b.amount - a.amount)
@@ -542,11 +525,11 @@ export const ExpensesTab: React.FC = () => {
                   .map(e => (
                     <div key={e.id} className="flex justify-between items-center border-b border-white/5 pb-2">
                       <span className="text-[10px] uppercase font-bold text-gray-400">{e.description || e.categoryName}</span>
-                      <span className="text-xs font-black text-red-500">- R$ {e.amount.toFixed(2)}</span>
+                      <span className="text-xs font-black text-red-500">- {formatCurrency(e.amount, currencyCode, localeStr)}</span>
                     </div>
                   ))}
                  {expenses.filter(e => (e.type === 'expense' || !e.type) && new Date(e.date).getMonth() === currentMonth).length === 0 && (
-                  <p className="text-[10px] text-gray-600 uppercase italic">Nenhum gasto este mês</p>
+                  <p className="text-[10px] text-gray-600 uppercase italic">{t('expenses.no_expenses_month')}</p>
                  )}
               </div>
             </CardContent>
@@ -555,7 +538,7 @@ export const ExpensesTab: React.FC = () => {
           <Card className="bg-white/[0.02] border-white/10 rounded-none md:col-span-2">
              <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-xs uppercase tracking-widest text-blue-500 font-bold flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4" /> Lançamentos Recorrentes Ativos
+                <CheckCircle2 className="h-4 w-4" /> {t('expenses.active_recurring')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -567,16 +550,16 @@ export const ExpensesTab: React.FC = () => {
                       <p className="text-[8px] uppercase text-gray-600 tracking-tighter">{e.categoryName}</p>
                     </div>
                     <span className={`text-xs font-black ${
-                      (e.type === 'income' && !e.description.toLowerCase().includes('aluguel')) 
+                      (e.type === 'income' && !e.description.toLowerCase().includes(t('expenses.cat_rent').toLowerCase())) 
                       ? 'text-green-500' 
                       : 'text-red-500'
                     }`}>
-                      {(e.type === 'income' && !e.description.toLowerCase().includes('aluguel')) ? '+' : '-'} R$ {e.amount.toFixed(2)}
+                      {(e.type === 'income' && !e.description.toLowerCase().includes(t('expenses.cat_rent').toLowerCase())) ? '+' : '-'} {formatCurrency(e.amount, currencyCode, localeStr)}
                     </span>
                   </div>
                 ))}
                  {expenses.filter(e => e.isRecurring).length === 0 && (
-                  <p className="text-[10px] text-gray-600 uppercase italic col-span-3">Nenhum lançamento recorrente configurado</p>
+                  <p className="text-[10px] text-gray-600 uppercase italic col-span-3">{t('expenses.no_recurring_config')}</p>
                  )}
               </div>
             </CardContent>
@@ -586,13 +569,13 @@ export const ExpensesTab: React.FC = () => {
 
       {/* Edit Expense Modal */}
       <Dialog open={isEditExpenseOpen} onOpenChange={setIsEditExpenseOpen}>
-        <DialogContent className="bg-zinc-950 border-white/10 rounded-none max-w-md">
+        <DialogContent className="bg-zinc-950 border-white/10 rounded-none max-w-md text-white">
           <DialogHeader>
-            <DialogTitle className="uppercase italic font-black tracking-tighter text-2xl">Editar Lançamento</DialogTitle>
+            <DialogTitle className="uppercase italic font-black tracking-tighter text-2xl">{t('expenses.edit_entry')}</DialogTitle>
           </DialogHeader>
           
           {editingExpense && (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-4 text-white">
               <div className="flex bg-white/5 p-1 rounded-none mb-4">
                 <button
                   type="button"
@@ -601,7 +584,7 @@ export const ExpensesTab: React.FC = () => {
                     editingExpense.type === 'expense' ? 'bg-red-600 text-white' : 'text-gray-500'
                   }`}
                 >
-                  Despesa
+                  {t('expenses.type_expense')}
                 </button>
                 <button
                   type="button"
@@ -610,30 +593,30 @@ export const ExpensesTab: React.FC = () => {
                     editingExpense.type === 'income' ? 'bg-green-600 text-white' : 'text-gray-500'
                   }`}
                 >
-                  Receita
+                  {t('expenses.type_income')}
                 </button>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Valor (R$)</Label>
+                <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_amount')}</Label>
                 <Input 
                   type="number"
                   className={`bg-black border-white/10 rounded-none font-bold text-lg ${
                     editingExpense.type === 'expense' ? 'text-red-500' : 'text-green-500'
                   }`} 
-                  value={editingExpense.amount}
+                  value={editingExpense.amount || ''}
                   onChange={e => setEditingExpense({...editingExpense, amount: parseFloat(e.target.value)})}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Categoria</Label>
+                <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_category')}</Label>
                 <Select 
                   value={editingExpense.categoryId}
                   onValueChange={val => setEditingExpense({...editingExpense, categoryId: val})}
                 >
                   <SelectTrigger className="bg-black border-white/10 rounded-none">
-                    <SelectValue placeholder="Selecione a categoria" />
+                    <SelectValue placeholder={t('expenses.form_category_placeholder')} />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-white/10 text-white rounded-none">
                     {categories.map(cat => (
@@ -646,7 +629,7 @@ export const ExpensesTab: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Descrição</Label>
+                <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_description')}</Label>
                 <Input 
                   className="bg-black border-white/10 rounded-none"
                   value={editingExpense.description}
@@ -656,7 +639,7 @@ export const ExpensesTab: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Data</Label>
+                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.col_date')}</Label>
                   <Input 
                     type="date"
                     className="bg-black border-white/10 rounded-none"
@@ -665,19 +648,19 @@ export const ExpensesTab: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Pagamento</Label>
+                  <Label className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('expenses.form_payment')}</Label>
                   <Select 
                     value={editingExpense.paymentMethod}
                     onValueChange={val => setEditingExpense({...editingExpense, paymentMethod: val})}
                   >
                     <SelectTrigger className="bg-black border-white/10 rounded-none">
-                      <SelectValue placeholder="Selecione" />
+                      <SelectValue placeholder={t('common.back')} />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10 text-white rounded-none">
-                      <SelectItem value="interac">INTERAC</SelectItem>
-                      <SelectItem value="cash">Dinheiro</SelectItem>
-                      <SelectItem value="card">Cartão</SelectItem>
-                      <SelectItem value="transfer">Transferência</SelectItem>
+                        <SelectItem value="interac">INTERAC</SelectItem>
+                        <SelectItem value="cash">{t('expenses.pay_cash')}</SelectItem>
+                        <SelectItem value="card">{t('expenses.pay_card')}</SelectItem>
+                        <SelectItem value="transfer">{t('expenses.pay_transfer')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -692,7 +675,7 @@ export const ExpensesTab: React.FC = () => {
                   className="h-4 w-4 bg-black border-white/10 rounded-none accent-amber-600"
                 />
                 <Label htmlFor="edit-recurring" className="text-[10px] uppercase tracking-widest text-gray-400 font-bold cursor-pointer">
-                  Lançamento Recorrente?
+                  {t('expenses.recurring')}
                 </Label>
               </div>
             </div>
@@ -701,9 +684,9 @@ export const ExpensesTab: React.FC = () => {
           <DialogFooter>
             <Button 
               onClick={handleUpdateExpense}
-              className="w-full bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest font-bold py-6"
+              className="w-full bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest font-bold py-6 text-white"
             >
-              Salvar Alterações
+              {t('expenses.save_changes')}
             </Button>
           </DialogFooter>
         </DialogContent>

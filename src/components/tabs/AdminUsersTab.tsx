@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { firebaseUtils } from '../../lib/firebaseUtils';
 import { Barber, UserRole, UserPermission } from '../../types';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card } from '../ui/card';
 import { toast } from 'sonner';
-import { UserCog, Shield, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { Shield, ShieldCheck } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
+import { useTranslation } from 'react-i18next';
 
 export const AdminUsersTab: React.FC = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<Barber[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,21 +23,21 @@ export const AdminUsersTab: React.FC = () => {
   }, []);
 
   const allPermissions: { id: UserPermission; label: string }[] = [
-    { id: 'view_calendar', label: 'Ver Calendário' },
-    { id: 'manage_appointments', label: 'Gerenciar Agendamentos' },
-    { id: 'view_financials', label: 'Ver Relatórios Financeiros' },
-    { id: 'manage_inventory', label: 'Gerenciar Estoque' },
-    { id: 'manage_expenses', label: 'Gerenciar Despesas' },
-    { id: 'manage_users', label: 'Gerenciar Usuários (Equipe)' },
-    { id: 'manage_services', label: 'Gerenciar Serviços' },
+    { id: 'view_calendar', label: t('team.perm_view_calendar') },
+    { id: 'manage_appointments', label: t('team.perm_manage_appointments') },
+    { id: 'view_financials', label: t('team.perm_view_financials') },
+    { id: 'manage_inventory', label: t('team.perm_manage_inventory') },
+    { id: 'manage_expenses', label: t('team.perm_manage_expenses') },
+    { id: 'manage_users', label: t('team.perm_manage_users') },
+    { id: 'manage_services', label: t('team.perm_manage_services') },
   ];
 
   const updateUserRole = async (uid: string, role: UserRole) => {
     try {
       await firebaseUtils.updateDocument('users', uid, { role });
-      toast.success('Cargo atualizado com sucesso!');
+      toast.success(t('team.update_success'));
     } catch {
-      toast.error('Erro ao atualizar cargo.');
+      toast.error(t('team.update_error'));
     }
   };
 
@@ -47,20 +49,20 @@ export const AdminUsersTab: React.FC = () => {
 
     try {
       await firebaseUtils.updateDocument('users', user.uid, { permissions: newPermissions });
-      toast.success('Permissão atualizada!');
+      toast.success(t('team.perm_success'));
     } catch {
-      toast.error('Erro ao atualizar permissão.');
+      toast.error(t('team.perm_error'));
     }
   };
 
-  if (loading) return <div className="text-center py-10">Carregando usuários...</div>;
+  if (loading) return <div className="text-center py-10 text-gray-500 uppercase tracking-widest text-xs">{t('team.loading')}</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black uppercase italic tracking-tighter">Gestão de Equipe</h2>
-          <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Defina cargos e permissões de acesso</p>
+          <h2 className="text-2xl font-black uppercase italic tracking-tighter">{t('team.title')}</h2>
+          <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">{t('team.subtitle')}</p>
         </div>
       </div>
 
@@ -82,15 +84,15 @@ export const AdminUsersTab: React.FC = () => {
                     <div className="flex items-center mt-1">
                       {user.role === 'admin' ? (
                         <span className="text-[10px] bg-amber-500/20 text-amber-500 border border-amber-500/20 px-2 py-0.5 font-black uppercase italic">
-                          Administrador
+                          {t('team.role_admin')}
                         </span>
                       ) : user.role === 'manager' ? (
                         <span className="text-[10px] bg-blue-500/20 text-blue-500 border border-blue-500/20 px-2 py-0.5 font-black uppercase italic">
-                          Gerente
+                          {t('team.role_manager')}
                         </span>
                       ) : (
                         <span className="text-[10px] bg-gray-500/20 text-gray-400 border border-white/10 px-2 py-0.5 font-black uppercase italic">
-                          Barbeiro
+                          {t('team.role_barber')}
                         </span>
                       )}
                     </div>
@@ -99,7 +101,7 @@ export const AdminUsersTab: React.FC = () => {
 
                 {user.role !== 'admin' && (
                   <div className="space-y-3">
-                    <Label className="uppercase tracking-[0.2em] text-[10px] font-bold text-gray-500 block mb-2">Alterar Cargo</Label>
+                    <Label className="uppercase tracking-[0.2em] text-[10px] font-bold text-gray-500 block mb-2">{t('team.change_role')}</Label>
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 
@@ -107,7 +109,7 @@ export const AdminUsersTab: React.FC = () => {
                         className={`rounded-none text-[10px] uppercase font-bold flex-1 ${user.role === 'manager' ? 'bg-blue-600 hover:bg-blue-700' : 'border-white/10'}`}
                         onClick={() => updateUserRole(user.uid, 'manager')}
                       >
-                        Gerente
+                        {t('team.role_manager')}
                       </Button>
                       <Button 
                         size="sm" 
@@ -115,7 +117,7 @@ export const AdminUsersTab: React.FC = () => {
                         className="rounded-none text-[10px] uppercase font-bold border-white/10 flex-1 data-[state=active]:bg-white/10"
                         onClick={() => updateUserRole(user.uid, 'barber')}
                       >
-                        Barbeiro
+                        {t('team.role_barber')}
                       </Button>
                     </div>
                   </div>
@@ -126,14 +128,14 @@ export const AdminUsersTab: React.FC = () => {
               <div className="p-6 md:col-span-2">
                 <div className="flex items-center space-x-2 mb-4">
                   <Shield className="h-4 w-4 text-amber-500" />
-                  <h4 className="text-xs font-black uppercase italic tracking-widest">Permissões de Acesso</h4>
+                  <h4 className="text-xs font-black uppercase italic tracking-widest">{t('team.permissions_title')}</h4>
                 </div>
 
                 {user.role === 'admin' ? (
                   <div className="bg-amber-500/5 border border-amber-500/20 p-4 flex items-center space-x-3">
                     <ShieldCheck className="h-5 w-5 text-amber-500" />
                     <p className="text-xs text-amber-500/80 font-bold uppercase tracking-widest">
-                      O Administrador Geral possui todos os acessos e não pode ser restringido.
+                      {t('team.admin_full_access')}
                     </p>
                   </div>
                 ) : (

@@ -8,10 +8,10 @@ import esES from './locales/es-ES.json';
 import frFR from './locales/fr-FR.json';
 
 export const SUPPORTED_LANGUAGES = [
-  { code: 'pt-BR', label: 'Português', flag: '🇧🇷', currency: 'BRL' },
-  { code: 'en-US', label: 'English', flag: '🇺🇸', currency: 'USD' },
-  { code: 'es-ES', label: 'Español', flag: '🇪🇸', currency: 'EUR' },
-  { code: 'fr-FR', label: 'Français', flag: '🇫🇷', currency: 'EUR' }
+  { code: 'pt-BR', label: 'Português (BR)', flag: '🇧🇷', currency: 'BRL', currencySymbol: 'R$' },
+  { code: 'en-US', label: 'English (US)',   flag: '🇺🇸', currency: 'USD', currencySymbol: '$'  },
+  { code: 'es-ES', label: 'Español',        flag: '🇪🇸', currency: 'EUR', currencySymbol: '€'  },
+  { code: 'fr-FR', label: 'Français',       flag: '🇫🇷', currency: 'EUR', currencySymbol: '€'  },
 ] as const;
 
 export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number]['code'];
@@ -24,12 +24,10 @@ i18n
       'pt-BR': { translation: ptBR },
       'en-US': { translation: enUS },
       'es-ES': { translation: esES },
-      'fr-FR': { translation: frFR }
+      'fr-FR': { translation: frFR },
     },
     fallbackLng: 'pt-BR',
-    interpolation: {
-      escapeValue: false
-    }
+    interpolation: { escapeValue: false },
   });
 
 export default i18n;

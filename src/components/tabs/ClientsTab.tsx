@@ -9,7 +9,7 @@ import { Badge } from '../ui/badge';
 import { toast } from 'sonner';
 import { Plus, Search, Edit2, Trash2, User } from 'lucide-react';
 import { PhoneInput } from '../ui/phone-input';
-
+import { useTranslation } from 'react-i18next';
 
 const emptyClient = (): Omit<Client, 'id'> => ({
   name: '',
@@ -21,6 +21,7 @@ const emptyClient = (): Omit<Client, 'id'> => ({
 });
 
 export const ClientsTab: React.FC = () => {
+  const { t } = useTranslation();
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -63,33 +64,33 @@ export const ClientsTab: React.FC = () => {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.phone.trim()) {
-      toast.error('Nome e telefone são obrigatórios');
+      toast.error(t('clients_tab.required'));
       return;
     }
     setSaving(true);
     try {
       if (editing) {
         await firebaseUtils.updateDocument<Client>('clients', editing.id, form);
-        toast.success('Cliente atualizado!');
+        toast.success(t('clients_tab.save_success_update'));
       } else {
         await firebaseUtils.addDocument('clients', { ...form, createdAt: new Date().toISOString() });
-        toast.success('Cliente cadastrado!');
+        toast.success(t('clients_tab.save_success_create'));
       }
       setModalOpen(false);
     } catch {
-      toast.error('Erro ao salvar cliente');
+      toast.error(t('clients_tab.save_error'));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir este cliente?')) return;
+    if (!window.confirm(t('clients_tab.delete_confirm'))) return;
     try {
       await firebaseUtils.deleteDocument('clients', id);
-      toast.success('Cliente excluído');
+      toast.success(t('clients_tab.delete_success'));
     } catch {
-      toast.error('Erro ao excluir');
+      toast.error(t('clients_tab.delete_error'));
     }
   };
 
@@ -100,7 +101,7 @@ export const ClientsTab: React.FC = () => {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <Input
-            placeholder="Buscar por nome ou telefone..."
+            placeholder={t('clients_tab.search_placeholder')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-10 bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
@@ -110,18 +111,18 @@ export const ClientsTab: React.FC = () => {
           onClick={openAdd}
           className="bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest text-xs font-bold"
         >
-          <Plus className="h-4 w-4 mr-2" /> Novo Cliente
+          <Plus className="h-4 w-4 mr-2" /> {t('clients_tab.new_client')}
         </Button>
       </div>
 
       {/* Stats */}
       <div className="flex items-center gap-4">
         <Badge className="rounded-none text-xs uppercase tracking-widest bg-white/5 text-gray-400 border-white/10 py-1 px-3">
-          {clients.length} clientes cadastrados
+          {clients.length} {t('clients_tab.stats_prefix')}
         </Badge>
         {search && (
           <Badge className="rounded-none text-xs uppercase tracking-widest bg-amber-500/10 text-amber-500 border-amber-500/20 py-1 px-3">
-            {filtered.length} resultado(s)
+            {filtered.length} {t('clients_tab.results_prefix')}
           </Badge>
         )}
       </div>
@@ -130,24 +131,24 @@ export const ClientsTab: React.FC = () => {
       <div className="bg-white/[0.02] border border-white/10 overflow-hidden">
         {loading ? (
           <div className="p-12 text-center text-gray-500 uppercase tracking-widest text-xs animate-pulse">
-            Carregando...
+            {t('common.loading')}
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
             <User className="h-12 w-12 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-500 uppercase tracking-widest text-xs">
-              {search ? 'Nenhum cliente encontrado.' : 'Nenhum cliente cadastrado ainda.'}
+              {search ? t('clients_tab.no_results') : t('clients_tab.no_clients')}
             </p>
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/10 bg-white/5">
-                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500">Nome</th>
-                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500">Telefone</th>
-                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500 hidden md:table-cell">Email</th>
-                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500 hidden lg:table-cell">Aniversário</th>
-                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500">Ações</th>
+                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500">{t('clients_tab.col_name')}</th>
+                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500">{t('clients_tab.col_phone')}</th>
+                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500 hidden md:table-cell">{t('clients_tab.col_email')}</th>
+                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500 hidden lg:table-cell">{t('clients_tab.col_birth')}</th>
+                <th className="p-4 text-xs uppercase tracking-widest font-bold text-gray-500">{t('clients_tab.col_actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -163,7 +164,7 @@ export const ClientsTab: React.FC = () => {
                   <td className="p-4 text-sm text-gray-400 hidden md:table-cell">{c.email || '—'}</td>
                   <td className="p-4 text-sm text-gray-400 hidden lg:table-cell">
                     {c.birthDate
-                      ? new Date(c.birthDate + 'T12:00:00').toLocaleDateString('pt-BR')
+                      ? new Date(c.birthDate + 'T12:00:00').toLocaleDateString(t('common.locale_date'))
                       : '—'}
                   </td>
                   <td className="p-4">
@@ -196,40 +197,38 @@ export const ClientsTab: React.FC = () => {
         <DialogContent className="bg-[#111] border-white/10 rounded-none text-white max-w-md">
           <DialogHeader>
             <DialogTitle className="uppercase tracking-widest font-bold text-base">
-              {editing ? 'Editar Cliente' : 'Novo Cliente'}
+              {editing ? t('clients_tab.edit_client') : t('clients_tab.new_client')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Nome *</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('clients_tab.form_name')} *</Label>
               <Input
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
-                placeholder="Nome completo"
+                placeholder={t('clients_tab.form_name')}
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Telefone *</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('clients_tab.form_phone')} *</Label>
               <PhoneInput
                 value={form.phone}
                 onChange={value => setForm(f => ({ ...f, phone: value }))}
-                placeholder="(00) 00000-0000"
               />
-
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Email</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('clients_tab.form_email')}</Label>
               <Input
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 className="bg-white/5 border-white/10 rounded-none focus-visible:ring-amber-500"
-                placeholder="email@exemplo.com"
+                placeholder="email@example.com"
                 type="email"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Data de Nascimento</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('clients_tab.form_birth')}</Label>
               <Input
                 value={form.birthDate}
                 onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))}
@@ -238,29 +237,29 @@ export const ClientsTab: React.FC = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-widest text-gray-400">Observações</Label>
+              <Label className="text-xs uppercase tracking-widest text-gray-400">{t('clients_tab.form_notes')}</Label>
               <textarea
                 value={form.notes}
                 onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                 className="w-full bg-white/5 border border-white/10 rounded-none p-3 text-sm text-white resize-none h-20 focus:outline-none focus:border-amber-500 placeholder:text-gray-600"
-                placeholder="Preferências, alergias, observações..."
+                placeholder={t('clients_tab.notes_placeholder')}
               />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <button
-              type="button"
+            <Button
+              variant="outline"
               onClick={() => setModalOpen(false)}
-              className="border border-white/20 bg-transparent text-gray-300 px-4 py-2 rounded-none uppercase tracking-widest text-xs hover:bg-white/5 transition-colors"
+              className="border-white/10 rounded-none uppercase tracking-widest text-xs"
             >
-              Cancelar
-            </button>
+              {t('common.cancel')}
+            </Button>
             <Button
               onClick={handleSave}
               disabled={saving}
               className="bg-amber-600 hover:bg-amber-700 rounded-none uppercase tracking-widest text-xs font-bold"
             >
-              {saving ? 'Salvando...' : 'Salvar'}
+              {saving ? t('common.processing') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

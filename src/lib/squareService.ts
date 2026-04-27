@@ -61,13 +61,11 @@ export const squareService = {
     amount: number;
     applicationId: string;
     locationId: string;
+    currencyCode?: string; // BRL, USD, CAD, etc.
     note?: string;
   }) {
-    // Diagnóstico — ver no console qual ID está sendo enviado
-    console.log('[Square Mobile] applicationId:', params.applicationId);
-    console.log('[Square Mobile] locationId:', params.locationId);
-    console.log('[Square Mobile] amount:', params.amount);
-
+    const currency = params.currencyCode || 'BRL';
+    
     // Guard: ID vazio
     if (!params.applicationId) {
       alert("ERRO: Square Application ID está vazio. Acesse Configurações e salve o ID de PRODUÇÃO do Square Developer Portal.");
@@ -76,7 +74,7 @@ export const squareService = {
 
     // 1. Verificação de Sandbox (Não funciona no App do Tablet)
     if (params.applicationId.startsWith('sandbox-')) {
-      alert(`ERRO: Você está usando chaves de 'SANDBOX' (ID: ${params.applicationId}). O aplicativo da Square no iPad/Celular só aceita chaves de 'PRODUÇÃO'. Por favor, troque as chaves nas Configurações.`);
+      alert(`ERRO: Você está usando chaves de 'SANDBOX'. O aplicativo da Square no iPad/Celular só aceita chaves de 'PRODUÇÃO'.`);
       return;
     }
 
@@ -87,7 +85,7 @@ export const squareService = {
     const checkoutData = {
       amount_money: {
         amount: amountCents.toString(),
-        currency_code: 'CAD'
+        currency_code: currency
       },
       callback_url: callbackUrl,
       client_id: params.applicationId,
@@ -111,7 +109,7 @@ export const squareService = {
         `S.com.squareup.pos.CLIENT_ID=${params.applicationId}`,
         `S.com.squareup.pos.API_VERSION=v1.3`,
         `i.com.squareup.pos.TOTAL_AMOUNT=${amountCents}`,
-        `S.com.squareup.pos.CURRENCY_CODE=CAD`,
+        `S.com.squareup.pos.CURRENCY_CODE=${currency}`,
         `S.com.squareup.pos.TENDER_TYPES=com.squareup.pos.TENDER_CARD,com.squareup.pos.TENDER_CASH`,
         `S.com.squareup.pos.NOTES=${encodeURIComponent(params.note || "Venda")}`,
         "end"
@@ -125,9 +123,8 @@ export const squareService = {
     
     // Fallback: Se o app não abrir, sugerir instalação
     setTimeout(() => {
-      // Aqui usamos um check simples: se a página ainda está visível, o app provavelmente não abriu
       if (document.visibilityState === 'visible') {
-        if (confirm("Se o aplicativo da Square não abriu, você precisa instalá-lo ou garantir que está usando as chaves de PRODUÇÃO. Deseja conferir na App Store?")) {
+        if (confirm("Se o aplicativo da Square não abriu, verifique se está instalado e se as chaves de PRODUÇÃO estão corretas.")) {
           window.location.href = isAndroid 
             ? "https://play.google.com/store/apps/details?id=com.squareup"
             : "https://apps.apple.com/app/square-point-of-sale/id335393788";
