@@ -1,7 +1,7 @@
 {
-  "name": "BarberPro",
-  "short_name": "BarberPro",
-  "description": "Sistema de Agendamentos para Barbearias",
+  "name": "Global Barber",
+  "short_name": "Global Barber",
+  "description": "Agendamentos online para a Global Barber",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
